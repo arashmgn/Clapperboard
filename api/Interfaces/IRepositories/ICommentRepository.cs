@@ -1,3 +1,4 @@
+using IMDB.Domain.Repositories;
 using IMDB.Domain.Entities;
 
 namespace api.Interfaces.IRepositories;

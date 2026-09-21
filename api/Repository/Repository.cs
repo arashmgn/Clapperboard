@@ -1,3 +1,4 @@
+using IMDB.Domain.Repositories;
 using api.Data;
 using api.Interfaces.IRepositories;
 using IMDB.Domain.Common;

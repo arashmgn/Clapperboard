@@ -1,3 +1,4 @@
+using IMDB.Domain.Repositories;
 namespace api.Interfaces.IRepositories;
 
 public interface IRateRepository:IRepository<Rate>
