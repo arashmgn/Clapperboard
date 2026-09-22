@@ -10,7 +10,6 @@ namespace api.Models
 {
     public class AppUser: IdentityUser
     {
-        public ICollection<Comment> Comments { get; set; }
-        public ICollection<Rate> Rates { get; set; }
+        
     }
 }
