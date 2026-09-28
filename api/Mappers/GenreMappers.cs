@@ -1,4 +1,4 @@
-using api.Models;
+using IMDB.Domain.Entities;
 using API.Dtos;
 
 namespace api.Mappers;
@@ -11,13 +11,6 @@ public static class GenreMappers
         {
             Id = genreModel.Id,
             Title = genreModel.Title,
-        };
-    }
-    public static Genre ToGenreModel(this GenreRequestDto genreDto)
-    {
-        return new Genre
-        {
-            Title = genreDto.Title,
         };
     }
 }

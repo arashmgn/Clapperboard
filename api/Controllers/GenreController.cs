@@ -1,16 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
-using api.Data;
-using api.Dtos;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
-using System.Linq;
-using API.Dtos;
-using api.Interfaces.IRepositories;
-using api.Repository;
 using Microsoft.AspNetCore.Authorization;
+using MediatR;
+using API.Dtos;
 using api.Mappers;
-using api.Models;
 using api.Helpers;
+using IMDB.Application.Genres.Commands.CreateGenre;
+using IMDB.Application.Genres.Commands.DeleteGenre;
+using IMDB.Application.Genres.Commands.UpdateGenre;
+using IMDB.Application.Genres.Queries.GetGenreById;
+using IMDB.Application.Genres.Queries.GetGenres;
+using IMDB.Application.Genres.Queries.GetGenresPaginated;
 
 namespace api.Controllers;
 
@@ -18,16 +17,16 @@ namespace api.Controllers;
 [ApiController]
 public class GenreController : ControllerBase
 {
-    private readonly IGenreRepository _genreRepository;
+    private readonly IMediator _mediator;
 
-    public GenreController(ApplicationDbContext context)
+    public GenreController(IMediator mediator)
     {
-        _genreRepository = new GenreRepository(context);
+        _mediator = mediator;
     }
 
     #region Get Genres
 
-    // // همه ژانرها
+    // همه ژانرها (با پیجینیشن اگر page و pageSize داده شود)
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] int? page, [FromQuery] int? pageSize)
     {
@@ -35,8 +34,7 @@ public class GenreController : ControllerBase
         {
             if (page.HasValue && pageSize.HasValue)
             {
-                // پیجینیشن فعال
-                var (genres, totalCount) = await _genreRepository.GetAllPaginatedAsync(page.Value, pageSize.Value);
+                var (genres, totalCount) = await _mediator.Send(new GetGenresPaginatedQuery(page.Value, pageSize.Value));
                 var genreDto = genres.Select(g => g.ToGenreDto()).ToList();
 
                 return ApiResponse.Success(new
@@ -49,8 +47,7 @@ public class GenreController : ControllerBase
             }
             else
             {
-                // همه داده‌ها
-                var genres = await _genreRepository.GetAllAsync();
+                var genres = await _mediator.Send(new GetGenresQuery());
                 var genreDto = genres.Select(g => g.ToGenreDto()).ToList();
                 return ApiResponse.Success(genreDto, "Genres retrieved successfully");
             }
@@ -61,51 +58,13 @@ public class GenreController : ControllerBase
         }
     }
 
-    // [HttpGet]
-    // public async Task<IActionResult> GetList()
-    // {
-    //     try
-    //     {
-    //         var genres = await _genreRepository.GetAllAsync();
-    //         var genreDto = genres.Select(g => g.ToGenreDto()).ToList();
-    //         return ApiResponse.Success(genreDto, "Genres retrieved successfully");
-    //     }
-    //     catch
-    //     {
-    //         return ApiResponse.Error("Failed to retrieve genres", 500);
-    //     }
-    // }
-
-    // // ژانرها با پیجینیشن
-    // [HttpGet("paginated")]
-    // public async Task<IActionResult> GetListPaginated([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
-    // {
-    //     try
-    //     {
-    //         var (genres, totalCount) = await _genreRepository.GetAllPaginatedAsync(page, pageSize);
-    //         var genreDto = genres.Select(g => g.ToGenreDto()).ToList();
-    //
-    //         return ApiResponse.Success(new
-    //         {
-    //             TotalCount = totalCount,
-    //             Page = page,
-    //             PageSize = pageSize,
-    //             Data = genreDto
-    //         }, "Paginated genres retrieved successfully");
-    //     }
-    //     catch
-    //     {
-    //         return ApiResponse.Error("Failed to retrieve paginated genres", 500);
-    //     }
-    // }
-
     // جزئیات یک ژانر
     [HttpGet("{id}")]
     public async Task<IActionResult> GetDetail([FromRoute] int id)
     {
         try
         {
-            var genre = await _genreRepository.GetByIdAsync(id);
+            var genre = await _mediator.Send(new GetGenreByIdQuery(id));
             if (genre == null)
                 return ApiResponse.NotFound("Genre not found");
 
@@ -127,12 +86,9 @@ public class GenreController : ControllerBase
     {
         try
         {
-            var genre = genreDto.ToGenreModel();
-            genre = await _genreRepository.AddAsync(genre);
-            if (genre == null)
-                return ApiResponse.Error("Failed to create genre", 500);
+            var id = await _mediator.Send(new CreateGenreCommand(genreDto.Title));
 
-            return ApiResponse.Success(genre.ToGenreDto(), "Genre created successfully");
+            return ApiResponse.Success(new GenreDto { Id = id, Title = genreDto.Title }, "Genre created successfully");
         }
         catch
         {
@@ -146,17 +102,11 @@ public class GenreController : ControllerBase
     {
         try
         {
-            var genre = new Genre
-            {
-                Id = id,
-                Title = genreDto.Title
-            };
-
-            genre = await _genreRepository.UpdateAsync(genre);
-            if (genre == null)
+            var isUpdated = await _mediator.Send(new UpdateGenreCommand(id, genreDto.Title));
+            if (!isUpdated)
                 return ApiResponse.NotFound("Genre not found");
 
-            return ApiResponse.Success(genre.ToGenreDto(), "Genre updated successfully");
+            return ApiResponse.Success(new GenreDto { Id = id, Title = genreDto.Title }, "Genre updated successfully");
         }
         catch
         {
@@ -170,8 +120,7 @@ public class GenreController : ControllerBase
     {
         try
         {
-            var genre = new Genre { Id = id };
-            var isRemoved = await _genreRepository.DeleteAsync(genre);
+            var isRemoved = await _mediator.Send(new DeleteGenreCommand(id));
             if (!isRemoved)
                 return ApiResponse.NotFound("Genre not found or could not be deleted");
 
