@@ -1,16 +1,16 @@
 ﻿using api.Models;
 using IMDB.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace IMDB.Infrastructure
 {
-    internal class IdentityService: IIdentityService
+    public class IdentityService : IIdentityService
     {
         private readonly UserManager<AppUser> _userManager;
         public IdentityService(UserManager<AppUser> userManager)
@@ -23,7 +23,7 @@ namespace IMDB.Infrastructure
             var user = await _userManager.FindByIdAsync(userId);
             return user?.UserName;
         }
-        public async Task<Dictionary<string, string?>> GetUserNameAsync(IEnumerable<string> userIds)
+        public async Task<Dictionary<string, string?>> GetUserNamesAsync(IEnumerable<string> userIds)
         {
             var ids = userIds.Distinct().ToList();
             return (await _userManager.Users.Where(u => ids.Contains(u.Id)).ToListAsync())

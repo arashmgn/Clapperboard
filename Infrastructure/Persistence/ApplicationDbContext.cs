@@ -1,16 +1,16 @@
 ﻿using api.Models;
+using IMDB.Application.Common.Interfaces;
 using IMDB.Domain.Entities;
+using IMDB.Domain.ValueObjects;
 using Microsoft.AspNetCore.Identity;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace IMDB.Infrastructure.Persistence
 {
-    internal class ApplicationDbContext
+    public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : IdentityDbContext<AppUser>(options), IApplicationDbContext
     {
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Series> Series { get; set; }
@@ -31,8 +31,19 @@ namespace IMDB.Infrastructure.Persistence
             modelBuilder.Entity<AppUser>().HasIndex(u => u.UserName).IsUnique();
             modelBuilder.Entity<AppUser>().HasIndex(u => u.Email).IsUnique();
 
-            modelBuilder.Entity<Genre>().ToTable("Genres");
-            modelBuilder.Entity<Person>().ToTable("People");
+            modelBuilder.Entity<Genre>(b =>
+            {
+                b.ToTable("Genres");
+                b.Property(g => g.Title).IsRequired().HasMaxLength(100);
+                b.HasIndex(g => g.Title).IsUnique();
+            });
+
+            modelBuilder.Entity<Person>(b =>
+            {
+                b.ToTable("People");
+                b.Property(p => p.ImdbId).HasMaxLength(20);
+                b.Property(p => p.FullName).IsRequired().HasMaxLength(200);
+            });
 
             modelBuilder.Entity<Movie>(b =>
             {
@@ -43,5 +54,68 @@ namespace IMDB.Infrastructure.Persistence
                 b.Navigation(m => m.Genres).UsePropertyAccessMode(PropertyAccessMode.Field);
             });
 
+            modelBuilder.Entity<Series>(b =>
+            {
+                b.ToTable("Series");
+                b.OwnsOne(s => s.Info, ConfigureInfo<Series>);
+                b.Navigation(s => s.Info).IsRequired();
+                b.HasMany(s => s.Genres).WithMany().UsingEntity(j => j.ToTable("SeriesGenres"));
+                b.Navigation(s => s.Genres).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+                b.HasMany(s => s.Seasons)
+                    .WithOne()
+                    .HasForeignKey("SeriesId")
+                    .OnDelete(DeleteBehavior.Cascade);
+                b.Navigation(s => s.Seasons).UsePropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<Season>(b =>
+            {
+                b.ToTable("Seasons");
+
+                b.HasMany(s => s.Episodes)
+                    .WithOne()
+                    .HasForeignKey("SeasonId")
+                    .OnDelete(DeleteBehavior.Cascade);
+                b.Navigation(s => s.Episodes).UsePropertyAccessMode(PropertyAccessMode.Field);
+            });
+
+            modelBuilder.Entity<Episode>().ToTable("Episodes");
+
+            modelBuilder.Entity<Comment>(b =>
+            {
+                b.ToTable("Comments");
+                b.HasIndex(c => new { c.TargetType, c.TargetId });
+                b.HasIndex(c => c.UserId);
+            });
+
+            modelBuilder.Entity<Rate>(b =>
+            {
+                b.ToTable("Rates");
+                b.HasIndex(r => new { r.TargetType, r.TargetId });
+                b.HasIndex(r => r.UserId);
+            });
+
+            modelBuilder.Entity<Cast>(b =>
+            {
+                b.ToTable("Cast");
+                b.HasIndex(c => new { c.TargetType, c.TargetId });
+
+                b.HasOne<Person>()
+                    .WithMany()
+                    .HasForeignKey(c => c.PersonId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
         }
+
+        private static void ConfigureInfo<T>(OwnedNavigationBuilder<T, MediaInfo> info) where T : class
+        {
+            info.Property(i => i.ImdbId).HasColumnName("ImdbId").HasMaxLength(20);
+            info.Property(i => i.Title).HasColumnName("Title").IsRequired().HasMaxLength(300);
+            info.Property(i => i.Description).HasColumnName("Description");
+            info.Property(i => i.PosterUrl).HasColumnName("PosterUrl");
+            info.Property(i => i.ReleaseDate).HasColumnName("ReleaseDate");
+        }
+    }
 }
