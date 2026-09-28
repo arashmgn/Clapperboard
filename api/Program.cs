@@ -1,7 +1,5 @@
-using api.Data;
 using api.Interfaces;
 using api.Models;
-using api.Repository;
 using api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -9,8 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using api.Helpers;
-using api.Interfaces.IRepositories;
 using api.Middleware;
+using IMDB.Application.Common.Interfaces;
+using IMDB.Application.Genres.Queries.GetGenres;
+using IMDB.Infrastructure;
+using IMDB.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -89,17 +90,10 @@ builder.Services.AddAuthentication(options => {
 });
 
 
-// Repository Services
-builder.Services.AddScoped<IMovieRepository, MovieRepository>();
-builder.Services.AddScoped<ISeriesRepository, SeriesRepository>();
-builder.Services.AddScoped<IGenreRepository, GenreRepository>();
-builder.Services.AddScoped<ICommentRepository, CommentRepository>();
-builder.Services.AddScoped<IRateRepository, RateRepository>();
-builder.Services.AddScoped<IPersonRepository, PersonRepository>();
-builder.Services.AddScoped<ICastRepository, CastRepository>();
-builder.Services.AddScoped<IEpisodeRepository, EpisodeRepository>();
-builder.Services.AddScoped<ISeasonRepository, SeasonRepository>();
-builder.Services.AddScoped<IMediaRepository, MediaRepository>();
+// Application Services
+builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetGenresQuery).Assembly));
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 var app = builder.Build();
