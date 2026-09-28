@@ -8,7 +8,7 @@ public class Series : AggregateRoot
     private readonly List<Season> _seasons = new();
     private readonly List<Genre> _genres = new();
 
-    private Series() { } // for EF
+    private Series() { }
 
     public MediaInfo Info { get; private set; } = null!;
     public double AverageRating { get; private set; }

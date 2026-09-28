@@ -19,7 +19,6 @@ public class DeletePersonCommandHandler : IRequestHandler<DeletePersonCommand, b
         if (person is null)
             return false;
 
-        // Cast rows of this person have a real foreign key with cascade, so the database removes them.
         _context.People.Remove(person);
         await _context.SaveChangesAsync(cancellationToken);
 

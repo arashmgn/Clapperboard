@@ -2,7 +2,6 @@ using IMDB.Application.Common.Extensions;
 using IMDB.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-// The namespace IMDB.Application.Cast hides the entity name, so the entity gets an alias.
 using CastEntity = IMDB.Domain.Entities.Cast;
 
 namespace IMDB.Application.Cast.Commands.CreateCast;

@@ -8,7 +8,7 @@ public class Rate : AggregateRoot
     public const int MinScore = 1;
     public const int MaxScore = 5;
 
-    private Rate() { } // for EF
+    private Rate() { }
 
     public string UserId { get; private set; } = string.Empty;
     public ReviewTargetType TargetType { get; private set; }

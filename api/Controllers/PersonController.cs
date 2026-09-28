@@ -21,7 +21,6 @@ public class PersonController : ControllerBase
 
     #region Get People
 
-    // همه افراد یا پیج شده با query
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] int? page, [FromQuery] int? pageSize)
     {
@@ -53,7 +52,6 @@ public class PersonController : ControllerBase
         }
     }
 
-    // جزئیات یک شخص
     [HttpGet("{id}")]
     public async Task<IActionResult> GetDetail([FromRoute] int id)
     {

@@ -12,6 +12,4 @@ public class PersonDto
     public string Bio { get; set; }
     public string PhotoUrl { get; set; }
     
-    // public ICollection<CastDto> cast  { get; set; }
-    
 }

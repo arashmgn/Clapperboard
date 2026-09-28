@@ -4,7 +4,7 @@ namespace IMDB.Domain.Entities;
 
 public class Episode : BaseEntity
 {
-    private Episode() { } // for EF
+    private Episode() { }
 
     internal Episode(int episodeNumber, string? title, DateTime releaseDate, int? durationMinutes)
     {

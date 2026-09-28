@@ -30,7 +30,6 @@ public static class SeriesMappers
             Title = seriesDto.Title,
             ReleaseDate = seriesDto.ReleaseDate,
             Description = seriesDto.Description,
-            // Genres = seriesDto.GenreIds,
             PosterUrl = seriesDto.PosterUrl,
             Rate = seriesDto.Rate,
         };

@@ -122,7 +122,6 @@ public class MovieController : ControllerBase
             if (!deletedMovie)
                 return ApiResponse.NotFound("Movie not found");
 
-            // return ApiResponse.Success(null, "Movie has been deleted");
             return ApiResponse.Success(deletedMovie, "Movie has been deleted");
         }
         catch (Exception ex)

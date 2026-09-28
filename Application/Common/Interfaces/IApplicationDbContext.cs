@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IMDB.Application.Common.Interfaces;
 
-// The namespaces IMDB.Application.Series and IMDB.Application.Cast hide these entity names,
-// so the aliases are declared inside the namespace, where they win the name lookup.
 using Series = IMDB.Domain.Entities.Series;
 using Cast = IMDB.Domain.Entities.Cast;
 

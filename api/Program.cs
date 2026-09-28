@@ -90,7 +90,6 @@ builder.Services.AddAuthentication(options => {
 });
 
 
-// Application Services
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetGenresQuery).Assembly));
@@ -98,7 +97,6 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 
 var app = builder.Build();
 
-// Global Exception Handling
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())

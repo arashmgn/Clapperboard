@@ -24,7 +24,6 @@ public class DeleteSeriesCommandHandler : IRequestHandler<DeleteSeriesCommand, b
         if (series is null)
             return false;
 
-        // Seasons and episodes go with the series (cascade), but comments, rates and cast of the episodes must be removed by hand too.
         var episodeIds = series.Seasons.SelectMany(se => se.Episodes).Select(e => e.Id).ToList();
 
         await _context.RemoveTargetDependentsAsync(ReviewTargetType.Series, new[] { series.Id }, cancellationToken);

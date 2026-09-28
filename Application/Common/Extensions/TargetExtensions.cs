@@ -6,8 +6,6 @@ namespace IMDB.Application.Common.Extensions;
 
 public static class TargetExtensions
 {
-    // Comment, Rate and Cast point at their target by TargetType + TargetId with no foreign key,
-    // so existence has to be checked by hand.
     public static Task<bool> TargetExistsAsync(this IApplicationDbContext context,
         ReviewTargetType targetType, int targetId, CancellationToken cancellationToken)
     {
@@ -21,8 +19,6 @@ public static class TargetExtensions
         };
     }
 
-    // No foreign key also means no database cascade, so the comments, rates and cast of a deleted
-    // target are removed here, in the same SaveChanges as the target itself.
     public static async Task RemoveTargetDependentsAsync(this IApplicationDbContext context,
         ReviewTargetType targetType, IReadOnlyCollection<int> targetIds, CancellationToken cancellationToken)
     {

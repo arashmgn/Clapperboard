@@ -7,7 +7,7 @@ public class Movie : AggregateRoot
 {
     private readonly List<Genre> _genres = new();
 
-    private Movie() { } // for EF
+    private Movie() { }
 
     public MediaInfo Info { get; private set; } = null!;
     public int DurationMinutes { get; private set; }

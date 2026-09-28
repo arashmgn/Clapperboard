@@ -7,24 +7,24 @@ namespace api.Enums
 {
     public enum CastRole
     {
-        Actor,             // بازیگر
-        Director,          // کارگردان
-        Writer,            // نویسنده
-        Producer,          // تهیه‌کننده
-        Cinematographer,   // فیلمبردار / مدیر تصویربرداری
-        Editor,            // تدوین‌گر
-        Composer,          // آهنگساز
-        SoundDepartment,   // بخش صدا
-        CostumeDesigner,   // طراح لباس
-        MakeupArtist,      // گریمور
-        VisualEffects,     // جلوه‌های ویژه
-        ArtDirector,       // مدیر هنری / طراحی صحنه
-        CastingDirector,   // مدیر انتخاب بازیگر
-        Stunt,             // بدل‌کار
-        ProductionManager, // مدیر تولید
-        LightingDepartment,// بخش نورپردازی
-        LocationManager,   // مسئول لوکیشن
-        Other              // سایر نقش‌ها
+        Actor,
+        Director,
+        Writer,
+        Producer,
+        Cinematographer,
+        Editor,
+        Composer,
+        SoundDepartment,
+        CostumeDesigner,
+        MakeupArtist,
+        VisualEffects,
+        ArtDirector,
+        CastingDirector,
+        Stunt,
+        ProductionManager,
+        LightingDepartment,
+        LocationManager,
+        Other
     }
 
     public enum ContentTypeEnum

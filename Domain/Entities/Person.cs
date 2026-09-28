@@ -4,7 +4,7 @@ namespace IMDB.Domain.Entities;
 
 public class Person : AggregateRoot
 {
-    private Person() { } // for EF
+    private Person() { }
 
     public string ImdbId { get; private set; } = string.Empty;
     public string FullName { get; private set; } = string.Empty;

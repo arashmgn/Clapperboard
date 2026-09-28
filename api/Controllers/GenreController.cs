@@ -26,7 +26,6 @@ public class GenreController : ControllerBase
 
     #region Get Genres
 
-    // همه ژانرها (با پیجینیشن اگر page و pageSize داده شود)
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] int? page, [FromQuery] int? pageSize)
     {
@@ -58,7 +57,6 @@ public class GenreController : ControllerBase
         }
     }
 
-    // جزئیات یک ژانر
     [HttpGet("{id}")]
     public async Task<IActionResult> GetDetail([FromRoute] int id)
     {

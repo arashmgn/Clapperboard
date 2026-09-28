@@ -5,7 +5,7 @@ namespace IMDB.Domain.Entities;
 
 public class Cast : AggregateRoot
 {
-    private Cast() { } // for EF
+    private Cast() { }
 
     public ReviewTargetType TargetType { get; private set; }
     public int TargetId { get; private set; }

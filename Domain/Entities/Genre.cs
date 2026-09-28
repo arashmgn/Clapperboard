@@ -4,7 +4,7 @@ namespace IMDB.Domain.Entities;
 
 public class Genre : AggregateRoot
 {
-    private Genre() { } // for EF
+    private Genre() { }
 
     public string Title { get; private set; } = string.Empty;
 

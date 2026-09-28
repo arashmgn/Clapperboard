@@ -2,7 +2,6 @@ using IMDB.Application.Common.Interfaces;
 using IMDB.Domain.ValueObjects;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-// The namespace IMDB.Application.Series hides the entity name, so the entity gets an alias.
 using SeriesEntity = IMDB.Domain.Entities.Series;
 
 namespace IMDB.Application.Series.Commands.CreateSeries;

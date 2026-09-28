@@ -5,7 +5,7 @@ namespace IMDB.Domain.Entities;
 
 public class Comment : AggregateRoot
 {
-    private Comment() { } // for EF
+    private Comment() { }
 
     public string Text { get; private set; } = string.Empty;
     public string UserId { get; private set; } = string.Empty;
