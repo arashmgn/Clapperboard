@@ -21,7 +21,7 @@ public class DeleteMovieCommandHandler : IRequestHandler<DeleteMovieCommand, boo
         if (movie is null)
             return false;
 
-        await _context.RemoveTargetReviewsAsync(ReviewTargetType.Movie, new[] { movie.Id }, cancellationToken);
+        await _context.RemoveTargetDependentsAsync(ReviewTargetType.Movie, new[] { movie.Id }, cancellationToken);
         _context.Movies.Remove(movie);
         await _context.SaveChangesAsync(cancellationToken);
 

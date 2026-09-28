@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IMDB.Application.Common.Extensions;
 
-public static class ReviewTargetExtensions
+public static class TargetExtensions
 {
     // Comment, Rate and Cast point at their target by TargetType + TargetId with no foreign key,
     // so existence has to be checked by hand.
@@ -23,7 +23,7 @@ public static class ReviewTargetExtensions
 
     // No foreign key also means no database cascade, so the comments, rates and cast of a deleted
     // target are removed here, in the same SaveChanges as the target itself.
-    public static async Task RemoveTargetReviewsAsync(this IApplicationDbContext context,
+    public static async Task RemoveTargetDependentsAsync(this IApplicationDbContext context,
         ReviewTargetType targetType, IReadOnlyCollection<int> targetIds, CancellationToken cancellationToken)
     {
         if (targetIds.Count == 0)
