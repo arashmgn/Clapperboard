@@ -1,47 +1,147 @@
 using IMDB.Domain.Common;
-using IMDB.Domain.ValueObjects;
 
 namespace IMDB.Domain.Entities;
 
-public class Series : AggregateRoot
+public sealed class Series : Media, IAggregateRoot
 {
-    private readonly List<Season> _seasons = new();
     private readonly List<Genre> _genres = new();
+    private readonly List<Season> _seasons = new();
 
-    private Series() { }
-
-    public MediaInfo Info { get; private set; } = null!;
-    public double AverageRating { get; private set; }
-    public IReadOnlyCollection<Season> Seasons => _seasons;
-    public IReadOnlyCollection<Genre> Genres => _genres;
-
-    public static Series Create(MediaInfo info) => new Series { Info = info };
-
-    public void Update(MediaInfo info) => Info = info;
-
-    public void AddGenre(Genre genre)
+    private Series()
     {
-        if (!_genres.Contains(genre)) _genres.Add(genre);
     }
 
-    public Season AddSeason(int seasonNumber, string? title, DateTime releaseDate)
+    public IReadOnlyCollection<Genre> Genres => _genres;
+    public IReadOnlyCollection<Season> Seasons => _seasons;
+
+    public static Series Create(
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        IEnumerable<Genre> genres)
+    {
+        var series = new Series();
+        series.Apply(imdbId, title, releaseDate, description, posterUrl, rate, genres);
+        return series;
+    }
+
+    public void Update(
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        IEnumerable<Genre> genres)
+    {
+        Apply(imdbId, title, releaseDate, description, posterUrl, rate, genres);
+    }
+
+    public Season AddSeason(
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int seasonNumber,
+        int episodesCount)
     {
         if (_seasons.Any(s => s.SeasonNumber == seasonNumber))
-            throw new InvalidOperationException($"Season {seasonNumber} already exists.");
+            throw new DomainException($"Season {seasonNumber} already exists in this series");
 
-        var season = new Season(seasonNumber, title, releaseDate);
+        var season = Season.Create(imdbId, title, releaseDate, description, posterUrl, rate, seasonNumber, episodesCount);
         _seasons.Add(season);
         return season;
     }
 
-    public Episode AddEpisode(int seasonNumber, int episodeNumber, string? title,
-        DateTime releaseDate, int? durationMinutes)
+    public Season UpdateSeason(
+        Guid seasonId,
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int seasonNumber,
+        int episodesCount)
     {
-        var season = _seasons.FirstOrDefault(s => s.SeasonNumber == seasonNumber)
-            ?? throw new InvalidOperationException($"Season {seasonNumber} not found.");
+        var season = GetSeason(seasonId);
 
-        return season.AddEpisode(episodeNumber, title, releaseDate, durationMinutes);
+        if (_seasons.Any(s => s.Id != seasonId && s.SeasonNumber == seasonNumber))
+            throw new DomainException($"Season {seasonNumber} already exists in this series");
+
+        season.Update(imdbId, title, releaseDate, description, posterUrl, rate, seasonNumber, episodesCount);
+        return season;
     }
 
-    public void UpdateAverageRating(double value) => AverageRating = value;
+    public Season RemoveSeason(Guid seasonId)
+    {
+        var season = GetSeason(seasonId);
+        _seasons.Remove(season);
+        return season;
+    }
+
+    public Episode AddEpisode(
+        Guid seasonId,
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int episodeNumber,
+        int? durationMinutes)
+    {
+        return GetSeason(seasonId).AddEpisode(imdbId, title, releaseDate, description, posterUrl, rate, episodeNumber, durationMinutes);
+    }
+
+    public Episode UpdateEpisode(
+        Guid seasonId,
+        Guid episodeId,
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int episodeNumber,
+        int? durationMinutes)
+    {
+        return GetSeason(seasonId).UpdateEpisode(episodeId, imdbId, title, releaseDate, description, posterUrl, rate, episodeNumber, durationMinutes);
+    }
+
+    public Episode RemoveEpisode(Guid seasonId, Guid episodeId)
+    {
+        return GetSeason(seasonId).RemoveEpisode(episodeId);
+    }
+
+    private Season GetSeason(Guid seasonId)
+    {
+        return _seasons.FirstOrDefault(s => s.Id == seasonId)
+               ?? throw new DomainException("Season does not belong to this series");
+    }
+
+    private void Apply(
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        IEnumerable<Genre> genres)
+    {
+        var genreList = genres.ToList();
+
+        if (genreList.Count == 0)
+            throw new DomainException("A series needs at least one genre");
+
+        SetDetails(imdbId, title, releaseDate, description, posterUrl, rate);
+
+        _genres.Clear();
+        _genres.AddRange(genreList);
+    }
 }
