@@ -1,48 +1,57 @@
-using api.Enums;
 using IMDB.Domain.Common;
+using IMDB.Domain.Enums;
 
 namespace IMDB.Domain.Entities;
 
-public class Rate : AggregateRoot
+public sealed class Rate : Entity, IAggregateRoot
 {
-    public const int MinScore = 1;
-    public const int MaxScore = 5;
+    private Rate()
+    {
+        UserId = null!;
+    }
 
-    private Rate() { }
-
-    public string UserId { get; private set; } = string.Empty;
-    public ReviewTargetType TargetType { get; private set; }
-    public int TargetId { get; private set; }
-    public int Score { get; private set; }
+    public Guid MediaId { get; private set; }
+    public string UserId { get; private set; }
+    public ScoreEnum Score { get; private set; }
     public DateTime CreatedOn { get; private set; }
     public DateTime LastUpdatedOn { get; private set; }
 
-    public static Rate Create(string userId, ReviewTargetType targetType, int targetId, int score)
+    public static Rate Create(Guid mediaId, string userId, ScoreEnum score)
     {
-        EnsureValid(score);
+        if (mediaId == Guid.Empty)
+            throw new DomainException("Invalid media ID");
 
         var now = DateTime.UtcNow;
+
         return new Rate
         {
-            UserId = userId,
-            TargetType = targetType,
-            TargetId = targetId,
-            Score = score,
+            MediaId = mediaId,
+            UserId = Guard.NotEmpty(userId, "User", 450),
+            Score = ValidateScore(score),
             CreatedOn = now,
             LastUpdatedOn = now
         };
     }
 
-    public void ChangeScore(int score)
+    public void ChangeScore(string userId, ScoreEnum score)
     {
-        EnsureValid(score);
-        Score = score;
+        EnsureOwnedBy(userId);
+
+        Score = ValidateScore(score);
         LastUpdatedOn = DateTime.UtcNow;
     }
 
-    private static void EnsureValid(int score)
+    public void EnsureOwnedBy(string userId)
     {
-        if (score < MinScore || score > MaxScore)
-            throw new ArgumentOutOfRangeException(nameof(score), $"Score must be between {MinScore} and {MaxScore}.");
+        if (UserId != userId)
+            throw new ForbiddenDomainException("Only the author can modify this rate");
+    }
+
+    private static ScoreEnum ValidateScore(ScoreEnum score)
+    {
+        if (!Enum.IsDefined(score))
+            throw new DomainException("Score must be between 0 and 5");
+
+        return score;
     }
 }
