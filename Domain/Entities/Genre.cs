@@ -1,28 +1,33 @@
 using IMDB.Domain.Common;
+using System.Reflection;
 
 namespace IMDB.Domain.Entities;
-
-public class Genre : AggregateRoot
+public class Genre : IAggregateRoot
 {
-    private Genre() { }
-
-    public string Title { get; private set; } = string.Empty;
-
-    public static Genre Create(string title)
+    private Genre()
     {
-        EnsureValid(title);
-        return new Genre { Title = title };
+        Title = null;
+    }
+    public string Title { get; set; }
+
+    public static Create(string title)
+    {
+        return new Genre { Title = ValidateTitle(title) };
     }
 
     public void Rename(string title)
     {
-        EnsureValid(title);
-        Title = title;
+        Title = ValidateTitle(title);
     }
 
-    private static void EnsureValid(string title)
+    private static string ValidateTitle(string title)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new ArgumentException("Title is required.", nameof(title));
+        var value = Guard.NotEmpty(title, "Genre title", 50);
+
+        if (value.Length < 2)
+        {
+            throw new DomainException("Genre title must be at least 2 characters")
+        }
+        return value;
     }
 }
