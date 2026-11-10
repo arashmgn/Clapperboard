@@ -3,5 +3,7 @@ using IMDB.Domain.Entities;
 
 namespace IMDB.Application.Genres.Queries.GetGenresByIds
 {
-    public record GetGenresByIdsQuery(IEnumerable<int> Ids) : IRequest<List<Genre>>;
+    public record GetGenresByIdsQuery : IRequest<List<Genre>>
+    {
+    }
 }

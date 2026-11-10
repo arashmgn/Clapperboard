@@ -3,41 +3,6 @@ using IMDB.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace IMDB.Application.Common.Extensions;
-
 public static class TargetExtensions
 {
-    public static Task<bool> TargetExistsAsync(this IApplicationDbContext context,
-        ReviewTargetType targetType, int targetId, CancellationToken cancellationToken)
-    {
-        return targetType switch
-        {
-            ReviewTargetType.Movie => context.Movies.AnyAsync(m => m.Id == targetId, cancellationToken),
-            ReviewTargetType.Series => context.Series.AnyAsync(s => s.Id == targetId, cancellationToken),
-            ReviewTargetType.Episode => context.Series.AnyAsync(
-                s => s.Seasons.Any(se => se.Episodes.Any(e => e.Id == targetId)), cancellationToken),
-            _ => Task.FromResult(false)
-        };
-    }
-
-    public static async Task RemoveTargetDependentsAsync(this IApplicationDbContext context,
-        ReviewTargetType targetType, IReadOnlyCollection<int> targetIds, CancellationToken cancellationToken)
-    {
-        if (targetIds.Count == 0)
-            return;
-
-        var comments = await context.Comments
-            .Where(c => c.TargetType == targetType && targetIds.Contains(c.TargetId))
-            .ToListAsync(cancellationToken);
-        context.Comments.RemoveRange(comments);
-
-        var rates = await context.Rates
-            .Where(r => r.TargetType == targetType && targetIds.Contains(r.TargetId))
-            .ToListAsync(cancellationToken);
-        context.Rates.RemoveRange(rates);
-
-        var cast = await context.Cast
-            .Where(c => c.TargetType == targetType && targetIds.Contains(c.TargetId))
-            .ToListAsync(cancellationToken);
-        context.Cast.RemoveRange(cast);
-    }
 }
