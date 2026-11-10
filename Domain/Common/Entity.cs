@@ -1,23 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
+namespace IMDB.Domain.Common;
 
-namespace IMDB.Domain.Common
+public abstract class Entity
 {
-    public abstract class Entity
-    {
-    public Guid Id { get; set; }
+    public Guid Id { get; protected set; }
+
     public override bool Equals(object? obj)
     {
-        if (obj is not EntityHandle other || other.GetType() != GetType())
-        {
+        if (obj is not Entity other || other.GetType() != GetType())
             return false;
-        }
-    }
-        public override int GetHashCode() => Id == Geuid.Empty ? base.GetHashCode() : HashCode.Combine(GetType(), Id);
+
+        if (ReferenceEquals(this, other))
+            return true;
+
+        return Id != Guid.Empty && Id == other.Id;
     }
 
+    public override int GetHashCode() => Id == Guid.Empty ? base.GetHashCode() : HashCode.Combine(GetType(), Id);
 }

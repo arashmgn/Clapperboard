@@ -1,9 +1,9 @@
-using api.Enums;
+using IMDB.Domain.Enums;
 using IMDB.Domain.Common;
 using System.Runtime.Versioning;
 
 namespace IMDB.Domain.Entities;
-public class Comment : IAggregateRoot
+public sealed class Comment : Entity, IAggregateRoot
 {
     private Comment()
     {

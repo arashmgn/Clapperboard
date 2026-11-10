@@ -7,13 +7,13 @@ public sealed class Season : Media
 
     private Season()
     {
-
     }
 
     public int SeasonNumber { get; private set; }
-    public int EpisodeCount { get; private set; }
+    public int EpisodesCount { get; private set; }
     public Guid SeriesId { get; private set; }
-    public IReadOnlyCollection<Episode> Episodes { get; private set; }
+    public IReadOnlyCollection<Episode> Episodes => _episodes;
+
     internal static Season Create(
         string imdbId,
         string title,
@@ -22,24 +22,26 @@ public sealed class Season : Media
         string posterUrl,
         double rate,
         int seasonNumber,
-        int episodeCount)
+        int episodesCount)
     {
         var season = new Season();
-        season.Apply(imdbId, title, releaseDate, description, posterUrl, rate, seasonNumber);
+        season.Apply(imdbId, title, releaseDate, description, posterUrl, rate, seasonNumber, episodesCount);
         return season;
     }
+
     internal void Update(
         string imdbId,
-        string titlem
+        string title,
         DateTime releaseDate,
         string description,
-        string postUrl,
+        string posterUrl,
         double rate,
         int seasonNumber,
         int episodesCount)
     {
-        Apply(imdbId, Title, releaseDate, description, PosterUrl, seasonNumber, episodesCount);
+        Apply(imdbId, title, releaseDate, description, posterUrl, rate, seasonNumber, episodesCount);
     }
+
     internal Episode AddEpisode(
         string imdbId,
         string title,
@@ -59,15 +61,15 @@ public sealed class Season : Media
     }
 
     internal Episode UpdateEpisode(
-    Guid episodeId,
-    string imdbId,
-    string title,
-    DateTime releaseDate,
-    string description,
-    string posterUrl,
-    double rate,
-    int episodeNumber,
-    int? durationMinutes)
+        Guid episodeId,
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int episodeNumber,
+        int? durationMinutes)
     {
         var episode = GetEpisode(episodeId);
 
@@ -77,6 +79,7 @@ public sealed class Season : Media
         episode.Update(imdbId, title, releaseDate, description, posterUrl, rate, episodeNumber, durationMinutes);
         return episode;
     }
+
     internal Episode RemoveEpisode(Guid episodeId)
     {
         var episode = GetEpisode(episodeId);

@@ -1,4 +1,5 @@
-﻿using IMDB.Domain.Common;
+using IMDB.Domain.Common;
+using IMDB.Domain.ValueObjects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,15 +8,15 @@ using System.Threading.Tasks;
 
 namespace IMDB.Domain.Entities
 {
-    public abstract class Media
+    public abstract class Media : Entity
     {
         protected Media() 
         {
-            ImdbId = null;
-            Title = null;
-            Description = null;
-            PosterUrl = null;
-            Rate = null;
+            ImdbId = null!;
+            Title = null!;
+            Description = null!;
+            PosterUrl = null!;
+            Rate = null!;
         }
 
         public ImdbId ImdbId { get; private set; }
@@ -33,7 +34,7 @@ namespace IMDB.Domain.Entities
             string posterUrl,
             double rate)
         {
-            ImbdId = ImdbId.From(imdbId);
+            ImdbId = ImdbId.From(imdbId);
             Title = Guard.NotEmpty(title, "Title", 200);
             ReleaseDate = releaseDate;
             Description = Guard.NotEmpty(description, "Description", 2000);

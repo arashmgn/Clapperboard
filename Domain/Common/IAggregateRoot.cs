@@ -1,4 +1,5 @@
 namespace IMDB.Domain.Common;
-public abstract class IAggregateRoot : BaseEntity
+
+public interface IAggregateRoot
 {
 }

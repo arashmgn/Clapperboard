@@ -1,16 +1,15 @@
 using IMDB.Domain.Common;
-using System.Reflection;
 
 namespace IMDB.Domain.Entities;
-public class Genre : IAggregateRoot
+public sealed class Genre : Entity, IAggregateRoot
 {
     private Genre()
     {
-        Title = null;
+        Title = null!;
     }
-    public string Title { get; set; }
+    public string Title { get; private set; }
 
-    public static Create(string title)
+    public static Genre Create(string title)
     {
         return new Genre { Title = ValidateTitle(title) };
     }
@@ -26,7 +25,7 @@ public class Genre : IAggregateRoot
 
         if (value.Length < 2)
         {
-            throw new DomainException("Genre title must be at least 2 characters")
+            throw new DomainException("Genre title must be at least 2 characters");
         }
         return value;
     }

@@ -10,7 +10,7 @@ public class Episode : Media
 
     public int EpisodeNumber { get; private set; }
     public int? DurationMinutes { get; private set; }
-    public Guid SeasonID { get; private set; }
+    public Guid SeasonId { get; private set; }
 
     internal static Episode Create(
         string imdbId,

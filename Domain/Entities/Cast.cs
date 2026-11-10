@@ -1,8 +1,8 @@
-using api.Enums;
+using IMDB.Domain.Enums;
 using IMDB.Domain.Common;
 
 namespace IMDB.Domain.Entities;
-public class Cast : IAggregateRoot
+public sealed class Cast : Entity, IAggregateRoot
 {
     private Cast()
     {
@@ -10,15 +10,15 @@ public class Cast : IAggregateRoot
     }
 
     public Guid MediaId { get; private set; }
-    public Guid PersonalId { get; private set; }
+    public Guid PersonId { get; private set; }
     public CastRole Role { get; private set; }
     public Person? Person { get; private set; }
 
-    public static Cast Create(Guid mediaId, Guid persionId, CastRole role)
+    public static Cast Create(Guid mediaId, Guid personId, CastRole role)
     {
         var cast = new Cast();
         cast.Apply(mediaId, personId, role);
-        return cast
+        return cast;
     }
 
     public void Update(Guid mediaId, Guid personId, CastRole role)
@@ -30,10 +30,10 @@ public class Cast : IAggregateRoot
     {
         if (mediaId == Guid.Empty || personId == Guid.Empty || !Enum.IsDefined(role))
             throw new DomainException("Invalid input");
-        if (PersonalId != personId)
+        if (PersonId != personId)
             Person = null;
         MediaId = mediaId;
-        PersonalId = personId;
+        PersonId = personId;
         Role = role;
     }
 }
