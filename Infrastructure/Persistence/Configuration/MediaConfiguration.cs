@@ -3,7 +3,7 @@ using IMDB.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace IMDB.Infrastructure.Persistence.Configurations;
+namespace IMDB.Infrastructure.Persistence.Configuration;
 
 public sealed class MediaConfiguration : IEntityTypeConfiguration<Media>
 {

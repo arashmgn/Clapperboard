@@ -1,7 +1,6 @@
 using System.Security.Claims;
-using api.Dtos;
+using IMDB.Application.Dtos;
 using api.Helpers;
-using api.Interfaces.IRepositories;
 using api.Mappers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

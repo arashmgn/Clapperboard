@@ -1,0 +1,6 @@
+using CastEntity = IMDB.Domain.Entities.Cast;
+
+namespace IMDB.Application.Features.Cast.Queries.GetCastPaginated;
+public record GetCastPaginatedQuery : IRequest<(List<CastEntity> Items, int TotalCount)>
+{
+}

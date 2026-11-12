@@ -1,11 +1,10 @@
 using System.Security.Claims;
-using api.Dtos;
+using IMDB.Application.Dtos;
 using API.Dtos;
-using api.Interfaces;
-using api.Interfaces.IRepositories;
+using IMDB.Application.Common.Abstractions;
 using api.Mappers;
-using api.Models;
-using api.Repository;
+using IMDB.Domain.Entities;
+using IMDB.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using api.Helpers;

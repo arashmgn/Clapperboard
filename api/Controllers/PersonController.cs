@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using api.Interfaces.IRepositories;
-using api.Dtos;
+using IMDB.Application.Dtos;
 using api.Mappers;
-using api.Models;
+using IMDB.Domain.Entities;
+using IMDB.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using api.Helpers;
 

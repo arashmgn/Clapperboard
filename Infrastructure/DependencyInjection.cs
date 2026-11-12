@@ -1,5 +1,4 @@
 using IMDB.Application.Common.Abstractions;
-using IMDB.Application.Common.Interfaces;
 using IMDB.Infrastructure.Identity;
 using IMDB.Infrastructure.Persistence;
 using IMDB.Infrastructure.Security;

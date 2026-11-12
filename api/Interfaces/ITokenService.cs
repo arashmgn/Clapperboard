@@ -1,4 +1,5 @@
-using api.Models;
+using IMDB.Domain.Entities;
+using IMDB.Infrastructure.Identity;
 
 namespace api.Interfaces
 {

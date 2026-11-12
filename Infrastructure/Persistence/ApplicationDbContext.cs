@@ -1,4 +1,4 @@
-using IMDB.Application.Common.Interfaces;
+using IMDB.Application.Common.Abstractions;
 using IMDB.Domain.Entities;
 using IMDB.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;

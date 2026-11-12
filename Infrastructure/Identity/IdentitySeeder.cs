@@ -14,7 +14,7 @@ public static class IdentitySeeder
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
-        foreach (var role in new[] { Roles.Admin, Roles.User })
+        foreach (var role in new[] { Roles.Admin, Roles.Staff, Roles.User })
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));

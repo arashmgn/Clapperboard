@@ -1,5 +1,6 @@
-using api.Interfaces;
-using api.Models;
+using IMDB.Application.Common.Abstractions;
+using IMDB.Domain.Entities;
+using IMDB.Infrastructure.Identity;
 using api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -8,10 +9,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using api.Helpers;
 using api.Middleware;
-using IMDB.Application.Common.Interfaces;
-using IMDB.Application.Genres.Queries.GetGenres;
 using IMDB.Infrastructure;
 using IMDB.Infrastructure.Persistence;
+using IMDB.Application.Features.Genres.Queries.GetGenres;
 
 var builder = WebApplication.CreateBuilder(args);
 

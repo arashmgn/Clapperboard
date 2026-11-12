@@ -1,14 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
-using api.Data;
-using api.Dtos;
+using IMDB.Infrastructure.Persistence;
+using IMDB.Application.Dtos;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
-using api.Interfaces;
-using api.Repository;
+using IMDB.Application.Common.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using api.Mappers;
-using api.Interfaces.IRepositories;
-using api.Models;
+using IMDB.Domain.Entities;
+using IMDB.Infrastructure.Identity;
 using api.Helpers;
 
 namespace api.Controllers;
