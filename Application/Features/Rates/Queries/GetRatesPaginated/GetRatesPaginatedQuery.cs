@@ -1,6 +1,4 @@
 using IMDB.Domain.Entities;
 
 namespace IMDB.Application.Features.Rates.Queries.GetRatesPaginated;
-public record GetRatesPaginatedQuery : IRequest<(List<Rate> Items, int TotalCount)>
-{
-}
+public record GetRatesPaginatedQuery(int Page, int PageSize) : IRequest<(List<Rate> Items, int TotalCount)>;
