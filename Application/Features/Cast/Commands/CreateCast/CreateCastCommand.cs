@@ -1,4 +1,4 @@
+using IMDB.Domain.Enums;
+
 namespace IMDB.Application.Features.Cast.Commands.CreateCast;
-public record CreateCastCommand : IRequest<int>
-{
-}
+public record CreateCastCommand(Guid MediaId, Guid PersonId, CastRole Role) : IRequest<Guid>;
