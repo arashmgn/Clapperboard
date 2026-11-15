@@ -1,130 +1,125 @@
-using Microsoft.AspNetCore.Mvc;
-using api.Data;
-using api.Dtos;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
-using api.Interfaces;
-using api.Repository;
-using Microsoft.AspNetCore.Authorization;
-using api.Mappers;
-using api.Interfaces.IRepositories;
 using api.Models;
-using api.Helpers;
+using IMDB.Application.Common;
+using IMDB.Application.Dtos;
+using IMDB.Application.Features.Seasons.Queries.GetSeasons;
+using IMDB.Application.Features.Series.Commands.AddEpisode;
+using IMDB.Application.Features.Series.Commands.AddSeason;
+using IMDB.Application.Features.Series.Commands.CreateSeries;
+using IMDB.Application.Features.Series.Commands.DeleteSeries;
+using IMDB.Application.Features.Series.Commands.RemoveEpisode;
+using IMDB.Application.Features.Series.Commands.RemoveSeason;
+using IMDB.Application.Features.Series.Commands.UpdateEpisode;
+using IMDB.Application.Features.Series.Commands.UpdateSeason;
+using IMDB.Application.Features.Series.Commands.UpdateSeries;
+using IMDB.Application.Features.Series.Queries.GetSeriesById;
+using IMDB.Application.Features.Series.Queries.GetSeriesList;
+using IMDB.Application.Features.Series.Queries.GetSeriesPaginated;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
-public class SeriesController : ControllerBase
+public class SeriesController(IMediator mediator) : ApiControllerBase(mediator)
 {
-    private readonly ISeriesRepository _seriesRepository;
-    private readonly IGenreRepository _genreRepository;
-    
-    public SeriesController(ApplicationDbContext context, ISeriesRepository seriesRepository, IGenreRepository genreRepository)
-    {
-        _seriesRepository = seriesRepository;
-        _genreRepository = genreRepository;
-    }
-    
     [HttpGet]
-    public async Task<IActionResult> GetList()
+    public async Task<IActionResult> GetAll(CancellationToken ct)
+        => Ok(await Mediator.Send(new GetSeriesListQuery(), ct));
+
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        try
-        {
-            var series = await _seriesRepository.GetAllAsync();
-            var seriesDto = series.Select(s => s.ToSeriesDto()).ToList();
-            return ApiResponse.Success(seriesDto, "Series retrieved successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to retrieve series", 500);
-        }
+        (page, pageSize) = Normalize(page, pageSize);
+        var (items, totalCount) = await Mediator.Send(new GetSeriesPaginatedQuery(page, pageSize), ct);
+        return Ok(new PagedResponse<SeriesDto>(items, totalCount, page, pageSize));
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetDetail([FromRoute] int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var series = await _seriesRepository.GetByIdAsync(id);
-            if (series == null)
-                return ApiResponse.NotFound("Series not found");
-
-            return ApiResponse.Success(series.ToSeriesDto(), "Series retrieved successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to retrieve series", 500);
-        }
+        var series = await Mediator.Send(new GetSeriesByIdQuery(id), ct);
+        return series is null ? NotFound() : Ok(series);
     }
 
-    [Authorize(Roles = "Admin")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] SeriesRequestDto seriesDto)
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Create([FromBody] SeriesRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var genres = await _genreRepository.GetAllByIdsAsync(seriesDto.GenreIds);
-            if (genres.Count != seriesDto.GenreIds.Count)
-                return ApiResponse.NotFound("Invalid Genre ID");
-
-            var series = seriesDto.ToSeriesModel();
-            series.Genres = genres;
-            var addedSeries = await _seriesRepository.AddAsync(series);
-
-            if (addedSeries == null)
-                return ApiResponse.Error("Failed to create the series", 500);
-
-            return ApiResponse.Success(addedSeries.ToSeriesDto(), "Series created successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to create series", 500);
-        }
+        var id = await Mediator.Send(new CreateSeriesCommand(
+            dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.PosterUrl, dto.Rate, dto.GenreIds), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update([FromRoute] int id, [FromBody] SeriesRequestDto seriesDto)
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] SeriesRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var genres = await _genreRepository.GetAllByIdsAsync(seriesDto.GenreIds);
-            if (genres.Count != seriesDto.GenreIds.Count)
-                return ApiResponse.NotFound("Invalid Genre ID");
-
-            var seriesToUpdate = seriesDto.ToSeriesModel();
-            seriesToUpdate.Id = id;
-            seriesToUpdate.Genres = genres;
-            var updatedSeries = await _seriesRepository.UpdateAsync(seriesToUpdate); 
-            if (updatedSeries == null) 
-                return ApiResponse.NotFound("Series not found");
-
-            return ApiResponse.Success(updatedSeries.ToSeriesDto(), "Series updated successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to update series", 500);
-        }
+        await Mediator.Send(new UpdateSeriesCommand(
+            id, dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.PosterUrl, dto.Rate, dto.GenreIds), ct);
+        return NoContent();
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete([FromRoute] int id)
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var series = new Series() { Id = id };
-            var deletedSeries = await _seriesRepository.DeleteAsync(series); 
+        await Mediator.Send(new DeleteSeriesCommand(id), ct);
+        return NoContent();
+    }
 
-            if (!deletedSeries)
-                return ApiResponse.NotFound("Series not found");
+    [HttpGet("{seriesId:guid}/seasons")]
+    public async Task<IActionResult> GetSeasons(Guid seriesId, CancellationToken ct)
+        => Ok(await Mediator.Send(new GetSeasonsQuery(seriesId), ct));
 
-            return ApiResponse.Success(deletedSeries, "Series has been deleted");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to delete series", 500);
-        }
+    [HttpPost("{seriesId:guid}/seasons")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> AddSeason(Guid seriesId, [FromBody] SeasonRequestDto dto, CancellationToken ct)
+    {
+        var id = await Mediator.Send(new AddSeasonCommand(
+            seriesId, dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.PosterUrl, dto.Rate, dto.SeasonNumber, dto.EpisodesCount), ct);
+        return Created($"api/Season/{id}", new { id });
+    }
+
+    [HttpPut("{seriesId:guid}/seasons/{seasonId:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> UpdateSeason(Guid seriesId, Guid seasonId, [FromBody] SeasonRequestDto dto, CancellationToken ct)
+    {
+        await Mediator.Send(new UpdateSeasonCommand(
+            seriesId, seasonId, dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.PosterUrl, dto.Rate, dto.SeasonNumber, dto.EpisodesCount), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{seriesId:guid}/seasons/{seasonId:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> RemoveSeason(Guid seriesId, Guid seasonId, CancellationToken ct)
+    {
+        await Mediator.Send(new RemoveSeasonCommand(seriesId, seasonId), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{seriesId:guid}/seasons/{seasonId:guid}/episodes")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> AddEpisode(Guid seriesId, Guid seasonId, [FromBody] EpisodeRequestDto dto, CancellationToken ct)
+    {
+        var id = await Mediator.Send(new AddEpisodeCommand(
+            seriesId, seasonId, dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.PosterUrl, dto.Rate, dto.EpisodeNumber, dto.DurationMinutes), ct);
+        return Created($"api/Season/{seasonId}", new { id });
+    }
+
+    [HttpPut("{seriesId:guid}/seasons/{seasonId:guid}/episodes/{episodeId:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> UpdateEpisode(Guid seriesId, Guid seasonId, Guid episodeId, [FromBody] EpisodeRequestDto dto, CancellationToken ct)
+    {
+        await Mediator.Send(new UpdateEpisodeCommand(
+            seriesId, seasonId, episodeId, dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.PosterUrl, dto.Rate, dto.EpisodeNumber, dto.DurationMinutes), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{seriesId:guid}/seasons/{seasonId:guid}/episodes/{episodeId:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> RemoveEpisode(Guid seriesId, Guid seasonId, Guid episodeId, CancellationToken ct)
+    {
+        await Mediator.Send(new RemoveEpisodeCommand(seriesId, seasonId, episodeId), ct);
+        return NoContent();
     }
 }

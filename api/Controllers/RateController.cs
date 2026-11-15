@@ -1,121 +1,59 @@
-using System.Security.Claims;
-using api.Dtos;
-using api.Helpers;
-using api.Interfaces.IRepositories;
-using api.Mappers;
+using api.Models;
+using IMDB.Application.Dtos;
+using IMDB.Application.Features.Rates.Commands.CreateRate;
+using IMDB.Application.Features.Rates.Commands.DeleteRate;
+using IMDB.Application.Features.Rates.Commands.UpdateRate;
+using IMDB.Application.Features.Rates.Queries.GetMediaRates;
+using IMDB.Application.Features.Rates.Queries.GetRateById;
+using IMDB.Application.Features.Rates.Queries.GetRatesPaginated;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class RateController : ControllerBase
+public class RateController(IMediator mediator) : ApiControllerBase(mediator)
 {
-    private readonly IRateRepository _rateRepository;
-    private readonly IMediaRepository _mediaRepository;
-    public RateController(IRateRepository rateRepository, IMediaRepository mediaRepository)
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        _rateRepository = rateRepository;
-        _mediaRepository = mediaRepository;
-    }
-    [HttpGet("media/{mediaId}")]
-    public async Task<IActionResult> GetMovieRates([FromRoute] int mediaId)
-    {
-        try
-        {
-            var rates = await _rateRepository.GetMediaRatesAsync(mediaId);
-            var rateDtos = rates.Select(r => r.ToRateDto());
-            return ApiResponse.Success(rateDtos, "Rates retrieved successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to retrieve rates", 500);
-        }
+        (page, pageSize) = Normalize(page, pageSize);
+        var (items, totalCount) = await Mediator.Send(new GetRatesPaginatedQuery(page, pageSize), ct);
+        return Ok(new PagedResponse<RateDto>(items, totalCount, page, pageSize));
     }
 
-    [Authorize]
-    [HttpPost("media/{mediaId}")]
-    public async Task<IActionResult> AddMediaRate([FromRoute] int mediaId, [FromBody] RateRequestDto rateDto)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if(userId == null)
-                return ApiResponse.BadRequest("Invalid Credentials");
-            
-            var media = await _mediaRepository.GetByIdAsync(mediaId);
-            if (media == null)
-                return ApiResponse.NotFound("Media Not Found");
-            
-            var rate = rateDto.ToRateModel();
-            rate.UserId = userId;
-            rate.MediaId = mediaId;
-            var createdRate = await _rateRepository.AddAsync(rate);
-            if (createdRate == null)
-            {
-                return ApiResponse.Error("Failed to create rate", 500);
-            }
-            return ApiResponse.Success(createdRate.ToRateDto(), "Rate added successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to add rate", 500);
-        }
+        var rate = await Mediator.Send(new GetRateByIdQuery(id), ct);
+        return rate is null ? NotFound() : Ok(rate);
     }
 
+    [HttpGet("media/{mediaId:guid}")]
+    public async Task<IActionResult> GetByMedia(Guid mediaId, CancellationToken ct)
+        => Ok(await Mediator.Send(new GetMediaRatesQuery(mediaId), ct));
+
+    [HttpPost("media/{mediaId:guid}")]
     [Authorize]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateRate(int id, [FromBody] RateRequestDto rateDto)
+    public async Task<IActionResult> Create(Guid mediaId, [FromBody] RateRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if(userId == null)
-                return ApiResponse.Unauthorized("Invalid Credentials");
-            
-            var rate = await _rateRepository.GetByIdAsync(id);
-            if(rate == null)
-                return ApiResponse.NotFound("Rate Not Found");
-            
-            var isAllowed = rate.UserId == userId;
-            if (!isAllowed)
-                return ApiResponse.Unauthorized("Invalid Credentials");
-            
-            rate.Score = rateDto.Score;
-            rate.LastUpdatedOn = DateTime.UtcNow;
-            var updatedRate = await _rateRepository.UpdateAsync(rate);
-            if (updatedRate == null)
-                return ApiResponse.NotFound("Rate Not Found");
-            
-            return ApiResponse.Success(rate.ToRateDto(), "Rate updated successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to update rate", 500);
-        }
+        var id = await Mediator.Send(new CreateRateCommand(mediaId, dto.Score), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
+    [HttpPut("{id:guid}")]
     [Authorize]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteRate(int id)
+    public async Task<IActionResult> Update(Guid id, [FromBody] RateRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if(userId == null)
-                return ApiResponse.BadRequest("Invalid Credentials");
-            
-            var rate = new Rate() { Id = id };
-            var isRemoved = await _rateRepository.DeleteAsync(rate);
-            if (!isRemoved)
-                return ApiResponse.NotFound("Rate Not Found or Could not be Updated");
-            
-            return ApiResponse.Success(isRemoved, "Rate deleted successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to delete rate", 500);
-        }
+        await Mediator.Send(new UpdateRateCommand(id, dto.Score), ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await Mediator.Send(new DeleteRateCommand(id), ct);
+        return NoContent();
     }
 }

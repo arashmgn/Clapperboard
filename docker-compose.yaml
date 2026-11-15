@@ -1,34 +1,41 @@
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: sqlserver
+    container_name: clapperboard-db
     environment:
-      SA_PASSWORD: "YourStrong!Passw0rd"
       ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD:-Clapperboard#Dev123}"
     ports:
       - "1433:1433"
     volumes:
       - sqlserverdata:/var/opt/mssql
-      - ./sql-init:/sql-init
-    networks:
-      - mynetwork
 
-  webapi:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: clapperboard-api
     depends_on:
       - db
     environment:
-    - ConnectionStrings__DefaultConnection=Server=db;Database=IMDB;User Id=sa;Password=YourStrong!Passw0rd;Encrypt=False;TrustServerCertificate=True;
+      ConnectionStrings__DefaultConnection: "Server=db;Database=Clapperboard;User Id=sa;Password=${SA_PASSWORD:-Clapperboard#Dev123};TrustServerCertificate=True"
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:-change-me-change-me-change-me-change-me-0123456789}"
+      Seed__AdminUserName: "${ADMIN_USERNAME:-admin}"
+      Seed__AdminEmail: "${ADMIN_EMAIL:-admin@clapperboard.local}"
+      Seed__AdminPassword: "${ADMIN_PASSWORD:-Admin#12345}"
     ports:
-      - "5000:80"
-    networks:
-      - mynetwork
+      - "5000:8080"
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://api:8080
+    container_name: clapperboard-web
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
 
 volumes:
   sqlserverdata:
-
-networks:
-  mynetwork:
-

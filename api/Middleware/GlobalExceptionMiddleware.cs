@@ -1,61 +1,42 @@
-using System.Net;
 using System.Text.Json;
+using api.Models;
+using IMDB.Application.Common.Exceptions;
+using IMDB.Domain.Common;
 
 namespace api.Middleware;
 
-public class GlobalExceptionMiddleware
+public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<GlobalExceptionMiddleware> _logger;
-
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!context.Response.HasStarted)
         {
-            _logger.LogError(ex, "An unhandled exception occurred");
-            await HandleExceptionAsync(context, ex);
+            var (status, errors) = Describe(ex);
+
+            if (status == StatusCodes.Status500InternalServerError)
+                logger.LogError(ex, "Unhandled exception while processing {Method} {Path}", context.Request.Method, context.Request.Path);
+
+            context.Response.Clear();
+            context.Response.StatusCode = status;
+            context.Response.ContentType = "application/json";
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new ApiResponse(false, null, errors), JsonOptions));
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static (int Status, IReadOnlyList<string> Errors) Describe(Exception ex) => ex switch
     {
-        context.Response.ContentType = "application/json";
-        
-        var response = new
-        {
-            error = "An error occurred while processing your request",
-            message = exception.Message,
-            timestamp = DateTime.UtcNow
-        };
-
-        switch (exception)
-        {
-            case ArgumentNullException:
-            case ArgumentException:
-                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                break;
-            case UnauthorizedAccessException:
-                context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-                break;
-            case KeyNotFoundException:
-                context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                break;
-            default:
-                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                break;
-        }
-
-        var jsonResponse = JsonSerializer.Serialize(response);
-        await context.Response.WriteAsync(jsonResponse);
-    }
+        ApplicationsExceptions.NotFoundException => (StatusCodes.Status404NotFound, [ex.Message]),
+        ApplicationsExceptions.UnauthorizedException => (StatusCodes.Status401Unauthorized, [ex.Message]),
+        ApplicationsExceptions.IdentityOperationException identity => (StatusCodes.Status400BadRequest, identity.Errors),
+        ForbiddenDomainException => (StatusCodes.Status403Forbidden, [ex.Message]),
+        DomainException => (StatusCodes.Status400BadRequest, [ex.Message]),
+        _ => (StatusCodes.Status500InternalServerError, ["An unexpected error occurred."])
+    };
 }

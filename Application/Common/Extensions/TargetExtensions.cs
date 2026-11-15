@@ -1,43 +1,31 @@
-using api.Enums;
-using IMDB.Application.Common.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using IMDB.Application.Common.Exceptions;
+using IMDB.Domain.Entities;
 
 namespace IMDB.Application.Common.Extensions;
-
 public static class TargetExtensions
 {
-    public static Task<bool> TargetExistsAsync(this IApplicationDbContext context,
-        ReviewTargetType targetType, int targetId, CancellationToken cancellationToken)
+    public static async Task<bool> MediaExistsAsync(
+        this IApplicationDbContext context, Guid mediaId, CancellationToken cancellationToken)
     {
-        return targetType switch
-        {
-            ReviewTargetType.Movie => context.Movies.AnyAsync(m => m.Id == targetId, cancellationToken),
-            ReviewTargetType.Series => context.Series.AnyAsync(s => s.Id == targetId, cancellationToken),
-            ReviewTargetType.Episode => context.Series.AnyAsync(
-                s => s.Seasons.Any(se => se.Episodes.Any(e => e.Id == targetId)), cancellationToken),
-            _ => Task.FromResult(false)
-        };
+        return await context.Movies.AnyAsync(m => m.Id == mediaId, cancellationToken)
+            || await context.Series.AnyAsync(s => s.Id == mediaId, cancellationToken);
     }
 
-    public static async Task RemoveTargetDependentsAsync(this IApplicationDbContext context,
-        ReviewTargetType targetType, IReadOnlyCollection<int> targetIds, CancellationToken cancellationToken)
+    public static async Task<List<Genre>> GetGenresAsync(
+        this IApplicationDbContext context, IEnumerable<Guid> genreIds, CancellationToken cancellationToken)
     {
-        if (targetIds.Count == 0)
-            return;
-
-        var comments = await context.Comments
-            .Where(c => c.TargetType == targetType && targetIds.Contains(c.TargetId))
+        var ids = genreIds.Distinct().ToList();
+        var genres = await context.Genres
+            .Where(g => ids.Contains(g.Id))
             .ToListAsync(cancellationToken);
-        context.Comments.RemoveRange(comments);
 
-        var rates = await context.Rates
-            .Where(r => r.TargetType == targetType && targetIds.Contains(r.TargetId))
-            .ToListAsync(cancellationToken);
-        context.Rates.RemoveRange(rates);
+        if (genres.Count != ids.Count)
+        {
+            var missing = ids.Except(genres.Select(g => g.Id));
+            throw new ApplicationsExceptions.NotFoundException(
+                $"Genres not found: {string.Join(", ", missing)}");
+        }
 
-        var cast = await context.Cast
-            .Where(c => c.TargetType == targetType && targetIds.Contains(c.TargetId))
-            .ToListAsync(cancellationToken);
-        context.Cast.RemoveRange(cast);
+        return genres;
     }
 }

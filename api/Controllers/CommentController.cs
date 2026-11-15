@@ -1,137 +1,59 @@
-using System.Security.Claims;
-using api.Dtos;
-using API.Dtos;
-using api.Interfaces;
-using api.Interfaces.IRepositories;
-using api.Mappers;
 using api.Models;
-using api.Repository;
+using IMDB.Application.Dtos;
+using IMDB.Application.Features.Comments.Commands.CreateComment;
+using IMDB.Application.Features.Comments.Commands.DeleteComment;
+using IMDB.Application.Features.Comments.Commands.UpdateComment;
+using IMDB.Application.Features.Comments.Queries.GetCommentById;
+using IMDB.Application.Features.Comments.Queries.GetCommentsPaginated;
+using IMDB.Application.Features.Comments.Queries.GetMediaComments;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using api.Helpers;
 
 namespace api.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class CommentController : ControllerBase
+public class CommentController(IMediator mediator) : ApiControllerBase(mediator)
 {
-    private readonly ICommentRepository _commentRepository;
-    private readonly IMediaRepository _mediaRepository;
-    public CommentController(ICommentRepository commentRepository, MediaRepository mediaRepository)
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        _commentRepository = commentRepository;
-        _mediaRepository = mediaRepository;
-    }
-    [HttpGet("media/{mediaId}")]
-    public async Task<IActionResult> GetMediaComments([FromRoute] int mediaId)
-    {
-        try
-        {
-            var comments = await _commentRepository.GetMediaCommentsAsync(mediaId);
-            var commentDtoList = comments.Select(c => c.ToCommentDto());
-            return ApiResponse.Success(commentDtoList, "Comments retrieved successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to retrieve comments", 500);
-        }
+        (page, pageSize) = Normalize(page, pageSize);
+        var (items, totalCount) = await Mediator.Send(new GetCommentsPaginatedQuery(page, pageSize), ct);
+        return Ok(new PagedResponse<CommentDto>(items, totalCount, page, pageSize));
     }
 
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+    {
+        var comment = await Mediator.Send(new GetCommentByIdQuery(id), ct);
+        return comment is null ? NotFound() : Ok(comment);
+    }
+
+    [HttpGet("media/{mediaId:guid}")]
+    public async Task<IActionResult> GetByMedia(Guid mediaId, CancellationToken ct)
+        => Ok(await Mediator.Send(new GetMediaCommentsQuery(mediaId), ct));
+
+    [HttpPost("media/{mediaId:guid}")]
     [Authorize]
-    [HttpPost("media/{mediaId}")]
-    public async Task<IActionResult> AddCommentToMedia(
-        [FromRoute] int mediaId,
-        [FromBody] CommentRequestDto commentDto)
+    public async Task<IActionResult> Create(Guid mediaId, [FromBody] CommentRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userId == null)
-                return ApiResponse.Unauthorized();
-
-            var media = await _mediaRepository.GetByIdAsync(mediaId);
-            if (media == null)
-                return ApiResponse.NotFound("Media not found");
-
-            var comment = new Comment
-            {
-                Text = commentDto.Text,
-                MediaId = mediaId,
-                UserId = userId,
-                CreatedOn = DateTime.UtcNow,
-                LastUpdatedOn = DateTime.UtcNow
-            };
-            await _commentRepository.AddAsync(comment);
-
-            return ApiResponse.Success(comment.ToCommentDto(), "Comment added successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to add comment", 500);
-        }
+        var id = await Mediator.Send(new CreateCommentCommand(mediaId, dto.Text), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
+    [HttpPut("{id:guid}")]
     [Authorize]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateComment(int id, [FromBody] CommentRequestDto commentDto)
+    public async Task<IActionResult> Update(Guid id, [FromBody] CommentRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userId == null)
-                return ApiResponse.Unauthorized("Invalid Credentials");
-
-            var comment = await _commentRepository.GetByIdAsync(id);
-            if (comment == null)
-                return ApiResponse.NotFound("Comment Not Found");
-
-            var isAllowed = comment.UserId == userId;
-            if (!isAllowed)
-                return ApiResponse.Unauthorized("Invalid Credentials");
-
-            comment.Text = commentDto.Text;
-            comment.LastUpdatedOn = DateTime.UtcNow;
-            var updatedComment = await _commentRepository.UpdateAsync(comment);
-            if (updatedComment == null)
-                return ApiResponse.NotFound("Comment Not Found");
-
-            return ApiResponse.Success(comment.ToCommentDto(), "Comment updated successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to update comment", 500);
-        }
+        await Mediator.Send(new UpdateCommentCommand(id, dto.Text), ct);
+        return NoContent();
     }
 
+    [HttpDelete("{id:guid}")]
     [Authorize]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteComment(int id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userId == null)
-                return ApiResponse.BadRequest("Invalid Credentials");
-
-            var comment = await _commentRepository.GetByIdAsync(id);
-            if (comment == null)
-                return ApiResponse.NotFound("Comment Not Found");
-
-            var isAllowed = comment.UserId == userId;
-            if (!isAllowed)
-                return ApiResponse.BadRequest("Invalid Credentials");
-
-            var isRemoved = await _commentRepository.DeleteAsync(comment);
-            if (!isRemoved)
-                return ApiResponse.NotFound("Comment Not Found");
-
-            return ApiResponse.Success(isRemoved, "Comment deleted successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to delete comment", 500);
-        }
+        await Mediator.Send(new DeleteCommentCommand(id), ct);
+        return NoContent();
     }
 }
-

@@ -1,135 +1,60 @@
-using Microsoft.AspNetCore.Mvc;
-using api.Interfaces.IRepositories;
-using api.Dtos;
-using api.Mappers;
 using api.Models;
+using IMDB.Application.Common;
+using IMDB.Application.Dtos;
+using IMDB.Application.Features.People.Commands.CreatePerson;
+using IMDB.Application.Features.People.Commands.DeletePerson;
+using IMDB.Application.Features.People.Commands.UpdatePerson;
+using IMDB.Application.Features.People.Queries.GetPeople;
+using IMDB.Application.Features.People.Queries.GetPeoplePaginated;
+using IMDB.Application.Features.People.Queries.GetPersonById;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using api.Helpers;
+using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
-public class PersonController : ControllerBase
+public class PersonController(IMediator mediator) : ApiControllerBase(mediator)
 {
-    private readonly IPersonRepository _personRepository;
-
-    public PersonController(IPersonRepository personRepository)
-    {
-        _personRepository = personRepository;
-    }
-
-    #region Get People
-
     [HttpGet]
-    public async Task<IActionResult> GetList([FromQuery] int? page, [FromQuery] int? pageSize)
-    {
-        try
-        {
-            if (page.HasValue && pageSize.HasValue)
-            {
-                var (people, totalCount) = await _personRepository.GetAllPaginatedAsync(page.Value, pageSize.Value);
-                var personDtoList = people.Select(p => p.ToPersonDisplayDto()).ToList();
+    public async Task<IActionResult> GetAll(CancellationToken ct)
+        => Ok(await Mediator.Send(new GetPeopleQuery(), ct));
 
-                return ApiResponse.Success(new
-                {
-                    TotalCount = totalCount,
-                    Page = page.Value,
-                    PageSize = pageSize.Value,
-                    Data = personDtoList
-                }, "Paginated people retrieved successfully");
-            }
-            else
-            {
-                var people = await _personRepository.GetAllAsync();
-                var personDtoList = people.Select(p => p.ToPersonDisplayDto()).ToList();
-                return ApiResponse.Success(personDtoList, "People retrieved successfully");
-            }
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to retrieve people", 500);
-        }
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        (page, pageSize) = Normalize(page, pageSize);
+        var (items, totalCount) = await Mediator.Send(new GetPeoplePaginatedQuery(page, pageSize), ct);
+        return Ok(new PagedResponse<PersonDto>(items, totalCount, page, pageSize));
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetDetail([FromRoute] int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var person = await _personRepository.GetByIdAsync(id);
-            if (person == null)
-                return ApiResponse.NotFound("Person not found");
-
-            return ApiResponse.Success(person.ToPersonDetailDto(), "Person retrieved successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to retrieve person", 500);
-        }
+        var person = await Mediator.Send(new GetPersonByIdQuery(id), ct);
+        return person is null ? NotFound() : Ok(person);
     }
 
-    #endregion
-
-    #region CRUD
-
-    [Authorize(Roles = "Admin")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] PersonRequestDto personDto)
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Create([FromBody] PersonRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var person = await _personRepository.AddAsync(personDto.ToPersonModel());
-            if (person == null)
-                return ApiResponse.Error("Failed to create person", 500);
-
-            return ApiResponse.Success(person.ToPersonDisplayDto(), "Person created successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to create person", 500);
-        }
+        var id = await Mediator.Send(new CreatePersonCommand(dto.ImdbId, dto.FullName, dto.BirthDate, dto.Bio, dto.PhotoUrl), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update([FromRoute] int id, [FromBody] PersonRequestDto personDto)
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] PersonRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var person = personDto.ToPersonModel();
-            person.Id = id;
-
-            var updatedPerson = await _personRepository.UpdateAsync(person);
-            if (updatedPerson == null)
-                return ApiResponse.NotFound("Person not found");
-
-            return ApiResponse.Success(updatedPerson.ToPersonDetailDto(), "Person updated successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to update person", 500);
-        }
+        await Mediator.Send(new UpdatePersonCommand(id, dto.ImdbId, dto.FullName, dto.BirthDate, dto.Bio, dto.PhotoUrl), ct);
+        return NoContent();
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete([FromRoute] int id)
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var person = new Person { Id = id };
-            var isDeleted = await _personRepository.DeleteAsync(person);
-            if (!isDeleted)
-                return ApiResponse.NotFound("Person not found or could not be deleted");
-
-            return ApiResponse.Success(isDeleted, "Person has been deleted successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to delete person", 500);
-        }
+        await Mediator.Send(new DeletePersonCommand(id), ct);
+        return NoContent();
     }
-
-    #endregion
 }

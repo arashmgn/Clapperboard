@@ -1,24 +1,61 @@
 using IMDB.Domain.Common;
 
 namespace IMDB.Domain.Entities;
-
-public class Episode : BaseEntity
+public class Episode : Media
 {
-    private Episode() { }
-
-    internal Episode(int episodeNumber, string? title, DateTime releaseDate, int? durationMinutes)
+    private Episode() 
     {
-        if (episodeNumber <= 0)
-            throw new ArgumentException("Episode number must be positive.", nameof(episodeNumber));
-
-        EpisodeNumber = episodeNumber;
-        Title = title;
-        ReleaseDate = releaseDate;
-        DurationMinutes = durationMinutes;
+        
     }
 
     public int EpisodeNumber { get; private set; }
-    public string? Title { get; private set; }
-    public DateTime ReleaseDate { get; private set; }
     public int? DurationMinutes { get; private set; }
+    public Guid SeasonId { get; private set; }
+
+    internal static Episode Create(
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int episodeNumber,
+        int? durationMinutes)
+    {
+        var episode = new Episode();
+        episode.Apply(imdbId, title, releaseDate, description, posterUrl, 
+            rate, episodeNumber, durationMinutes);
+        return episode;
+    }
+
+    internal void Update(
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int episodeNumber,
+        int? durationMinutes)
+    {
+        Apply(imdbId, title, releaseDate, description, posterUrl, rate,
+            episodeNumber, durationMinutes);
+    }
+    private void Apply(
+        string imdbId,
+        string title,
+        DateTime releaseDate,
+        string description,
+        string posterUrl,
+        double rate,
+        int episodeNumber,
+        int? durationMinutes)
+    {
+        SetDetails(imdbId, title, releaseDate, description, posterUrl, rate);
+        EpisodeNumber = Guard.InRange(episodeNumber, 1, 1000, "Episode number");
+        DurationMinutes = durationMinutes.HasValue
+            ? Guard.InRange(durationMinutes.Value, 1, 300, "Duration")
+            : null;
+
+    }
 }

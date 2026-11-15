@@ -1,134 +1,60 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+using api.Models;
+using IMDB.Application.Common;
+using IMDB.Application.Dtos;
+using IMDB.Application.Features.Genres.Commands.CreateGenre;
+using IMDB.Application.Features.Genres.Commands.DeleteGenre;
+using IMDB.Application.Features.Genres.Commands.UpdateGenre;
+using IMDB.Application.Features.Genres.Queries.GetGenreById;
+using IMDB.Application.Features.Genres.Queries.GetGenres;
+using IMDB.Application.Features.Genres.Queries.GetGenresPaginated;
 using MediatR;
-using API.Dtos;
-using api.Mappers;
-using api.Helpers;
-using IMDB.Application.Genres.Commands.CreateGenre;
-using IMDB.Application.Genres.Commands.DeleteGenre;
-using IMDB.Application.Genres.Commands.UpdateGenre;
-using IMDB.Application.Genres.Queries.GetGenreById;
-using IMDB.Application.Genres.Queries.GetGenres;
-using IMDB.Application.Genres.Queries.GetGenresPaginated;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
-public class GenreController : ControllerBase
+public class GenreController(IMediator mediator) : ApiControllerBase(mediator)
 {
-    private readonly IMediator _mediator;
-
-    public GenreController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
-    #region Get Genres
-
     [HttpGet]
-    public async Task<IActionResult> GetList([FromQuery] int? page, [FromQuery] int? pageSize)
-    {
-        try
-        {
-            if (page.HasValue && pageSize.HasValue)
-            {
-                var (genres, totalCount) = await _mediator.Send(new GetGenresPaginatedQuery(page.Value, pageSize.Value));
-                var genreDto = genres.Select(g => g.ToGenreDto()).ToList();
+    public async Task<IActionResult> GetAll(CancellationToken ct)
+        => Ok(await Mediator.Send(new GetGenresQuery(), ct));
 
-                return ApiResponse.Success(new
-                {
-                    TotalCount = totalCount,
-                    Page = page.Value,
-                    PageSize = pageSize.Value,
-                    Data = genreDto
-                }, "Paginated genres retrieved successfully");
-            }
-            else
-            {
-                var genres = await _mediator.Send(new GetGenresQuery());
-                var genreDto = genres.Select(g => g.ToGenreDto()).ToList();
-                return ApiResponse.Success(genreDto, "Genres retrieved successfully");
-            }
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to retrieve genres", 500);
-        }
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        (page, pageSize) = Normalize(page, pageSize);
+        var (items, totalCount) = await Mediator.Send(new GetGenresPaginatedQuery(page, pageSize), ct);
+        return Ok(new PagedResponse<GenreDto>(items, totalCount, page, pageSize));
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetDetail([FromRoute] int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var genre = await _mediator.Send(new GetGenreByIdQuery(id));
-            if (genre == null)
-                return ApiResponse.NotFound("Genre not found");
-
-            return ApiResponse.Success(genre.ToGenreDto(), "Genre retrieved successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to retrieve genre", 500);
-        }
+        var genre = await Mediator.Send(new GetGenreByIdQuery(id), ct);
+        return genre is null ? NotFound() : Ok(genre);
     }
 
-    #endregion
-
-    #region CRUD
-
-    [Authorize(Roles = "Admin")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] GenreRequestDto genreDto)
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Create([FromBody] GenreRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var id = await _mediator.Send(new CreateGenreCommand(genreDto.Title));
-
-            return ApiResponse.Success(new GenreDto { Id = id, Title = genreDto.Title }, "Genre created successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to create genre", 500);
-        }
+        var id = await Mediator.Send(new CreateGenreCommand(dto.Title), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update([FromRoute] int id, [FromBody] GenreRequestDto genreDto)
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] GenreRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var isUpdated = await _mediator.Send(new UpdateGenreCommand(id, genreDto.Title));
-            if (!isUpdated)
-                return ApiResponse.NotFound("Genre not found");
-
-            return ApiResponse.Success(new GenreDto { Id = id, Title = genreDto.Title }, "Genre updated successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to update genre", 500);
-        }
+        await Mediator.Send(new UpdateGenreCommand(id, dto.Title), ct);
+        return NoContent();
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete([FromRoute] int id)
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var isRemoved = await _mediator.Send(new DeleteGenreCommand(id));
-            if (!isRemoved)
-                return ApiResponse.NotFound("Genre not found or could not be deleted");
-
-            return ApiResponse.Success(isRemoved, "Genre has been deleted successfully");
-        }
-        catch
-        {
-            return ApiResponse.Error("Failed to delete genre", 500);
-        }
+        await Mediator.Send(new DeleteGenreCommand(id), ct);
+        return NoContent();
     }
-
-    #endregion
 }

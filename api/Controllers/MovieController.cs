@@ -1,132 +1,62 @@
-using Microsoft.AspNetCore.Mvc;
-using api.Data;
-using api.Dtos;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
-using api.Interfaces;
-using api.Interfaces.IRepositories;
-using api.Repository;
 using api.Models;
+using IMDB.Application.Common;
+using IMDB.Application.Dtos;
+using IMDB.Application.Features.Movies.Commands.CreateMovie;
+using IMDB.Application.Features.Movies.Commands.DeleteMovie;
+using IMDB.Application.Features.Movies.Commands.UpdateMovie;
+using IMDB.Application.Features.Movies.Queries.GetMovieById;
+using IMDB.Application.Features.Movies.Queries.GetMovies;
+using IMDB.Application.Features.Movies.Queries.GetMoviesPaginated;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using api.Mappers;
-using api.Helpers;
+using Microsoft.AspNetCore.Mvc;
 
 namespace api.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
-public class MovieController : ControllerBase
+public class MovieController(IMediator mediator) : ApiControllerBase(mediator)
 {
-    private readonly IMovieRepository _movieRepository;
-    private readonly IGenreRepository _genreRepository;
-    
-    public MovieController(ApplicationDbContext context, IMovieRepository movieRepository, IGenreRepository genreRepository)
-    {
-        _movieRepository = movieRepository;
-        _genreRepository = genreRepository;
-    }
-    
     [HttpGet]
-    public async Task<IActionResult> GetList()
+    public async Task<IActionResult> GetAll(CancellationToken ct)
+        => Ok(await Mediator.Send(new GetMoviesQuery(), ct));
+
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        try
-        {
-            var movies = await _movieRepository.GetAllAsync();
-            var movieDto = movies.Select(movie => movie.ToMovieDto()).ToList();
-            return ApiResponse.Success(movieDto, "Movies retrieved successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to retrieve movies", 500);
-        }
+        (page, pageSize) = Normalize(page, pageSize);
+        var (items, totalCount) = await Mediator.Send(new GetMoviesPaginatedQuery(page, pageSize), ct);
+        return Ok(new PagedResponse<MovieDto>(items, totalCount, page, pageSize));
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetDetail([FromRoute] int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var movie = await _movieRepository.GetByIdAsync(id);
-            if (movie == null)
-                return ApiResponse.NotFound("Movie not found");
-
-            return ApiResponse.Success(movie.ToMovieDto(), "Movie retrieved successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to retrieve movie", 500);
-        }
+        var movie = await Mediator.Send(new GetMovieByIdQuery(id), ct);
+        return movie is null ? NotFound() : Ok(movie);
     }
 
-    [Authorize(Roles = "Admin")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] MovieRequestDto movieDto)
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Create([FromBody] MovieRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var genres = await _genreRepository.GetAllByIdsAsync(movieDto.GenreIds);
-            if (genres.Count != movieDto.GenreIds.Count)
-                return ApiResponse.NotFound("Invalid Genre ID");
-
-            var movie = movieDto.ToMovieModel();
-            movie.Genres = genres;
-            var addedMovie = await _movieRepository.AddAsync(movie);
-            
-            if (addedMovie == null)
-                return ApiResponse.Error("Failed to create the movie", 500);
-
-            return ApiResponse.Success(addedMovie.ToMovieDto(), "Movie created successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to create movie", 500);
-        }
+        var id = await Mediator.Send(new CreateMovieCommand(
+            dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.Duration, dto.PosterUrl, dto.Rate, dto.GenreIds), ct);
+        return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpPut]
-    [Route("{id}")]
-    public async Task<IActionResult> Update([FromRoute] int id, [FromBody] MovieRequestDto movieDto)
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] MovieRequestDto dto, CancellationToken ct)
     {
-        try
-        {
-            var genres = await _genreRepository.GetAllByIdsAsync(movieDto.GenreIds);
-            if (genres.Count != movieDto.GenreIds.Count)
-                return ApiResponse.NotFound("Invalid Genre ID");
-
-            var movieToUpdate = movieDto.ToMovieModel();
-            movieToUpdate.Id = id;
-            movieToUpdate.Genres = genres;
-            var updatedMovie = await _movieRepository.UpdateAsync(movieToUpdate);
-            if (updatedMovie == null)
-                return ApiResponse.NotFound("Movie not found");
-
-            return ApiResponse.Success(updatedMovie.ToMovieDto(), "Movie updated successfully");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to update movie", 500);
-        }
+        await Mediator.Send(new UpdateMovieCommand(
+            id, dto.ImdbId, dto.Title, dto.ReleaseDate, dto.Description, dto.Duration, dto.PosterUrl, dto.Rate, dto.GenreIds), ct);
+        return NoContent();
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpDelete]
-    [Route("{id}")]
-    public async Task<IActionResult> Delete([FromRoute] int id)
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var movie = new Movie() { Id = id };
-            var deletedMovie = await _movieRepository.DeleteAsync(movie); 
-
-            if (!deletedMovie)
-                return ApiResponse.NotFound("Movie not found");
-
-            return ApiResponse.Success(deletedMovie, "Movie has been deleted");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse.Error("Failed to delete movie", 500);
-        }
+        await Mediator.Send(new DeleteMovieCommand(id), ct);
+        return NoContent();
     }
 }

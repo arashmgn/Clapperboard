@@ -1,12 +1,14 @@
-using api.Data;
+using IMDB.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+
+namespace Tests.Helpers;
 
 public static class DbContextHelper
 {
-    public static ApplicationDbContext GetInMemoryDbContext(string dbName)
+    public static ApplicationDbContext CreateInMemory(string? name = null)
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: dbName)
+            .UseInMemoryDatabase(name ?? Guid.NewGuid().ToString())
             .Options;
 
         return new ApplicationDbContext(options);
