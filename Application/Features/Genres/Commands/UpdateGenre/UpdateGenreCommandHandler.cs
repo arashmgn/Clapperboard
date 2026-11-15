@@ -1,4 +1,5 @@
 using IMDB.Application.Common.Exceptions;
+using IMDB.Domain.Common;
 
 namespace IMDB.Application.Features.Genres.Commands.UpdateGenre;
 public class UpdateGenreCommandHandler : IRequestHandler<UpdateGenreCommand, bool>
@@ -17,6 +18,12 @@ public class UpdateGenreCommandHandler : IRequestHandler<UpdateGenreCommand, boo
             ?? throw new ApplicationsExceptions.NotFoundException($"Genre {request.Id} was not found.");
 
         genre.Rename(request.Title);
+
+        var titleTaken = await _context.Genres
+            .AnyAsync(g => g.Id != request.Id && g.Title == genre.Title, cancellationToken);
+        if (titleTaken)
+            throw new DomainException($"Genre '{genre.Title}' already exists.");
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return true;

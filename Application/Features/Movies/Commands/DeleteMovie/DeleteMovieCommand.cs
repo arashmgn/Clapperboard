@@ -1,4 +1,2 @@
 namespace IMDB.Application.Features.Movies.Commands.DeleteMovie;
-public record DeleteMovieCommand : IRequest<bool>
-{
-}
+public record DeleteMovieCommand(Guid Id) : IRequest<bool>;

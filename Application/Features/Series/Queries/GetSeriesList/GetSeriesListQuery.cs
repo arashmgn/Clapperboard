@@ -1,6 +1,2 @@
-using SeriesEntity = IMDB.Domain.Entities.Series;
-
 namespace IMDB.Application.Features.Series.Queries.GetSeriesList;
-public record GetSeriesListQuery : IRequest<List<SeriesEntity>>
-{
-}
+public record GetSeriesListQuery : IRequest<List<SeriesDto>>;
