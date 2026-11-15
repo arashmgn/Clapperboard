@@ -1,21 +1,28 @@
-using IMDB.Domain.Entities;
+using IMDB.Application.Common.Extensions;
 
 namespace IMDB.Application.Features.Comments.Queries.GetMediaComments;
-public class GetMediaCommentsQueryHandler : IRequestHandler<GetMediaCommentsQuery, List<Comment>>
+public class GetMediaCommentsQueryHandler : IRequestHandler<GetMediaCommentsQuery, List<CommentDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+    private readonly IIdentityService _identity;
 
-    public GetMediaCommentsQueryHandler(IApplicationDbContext context)
+    public GetMediaCommentsQueryHandler(IApplicationDbContext context, IMapper mapper, IIdentityService identity)
     {
         _context = context;
+        _mapper = mapper;
+        _identity = identity;
     }
 
-    public async Task<List<Comment>> Handle(GetMediaCommentsQuery request, CancellationToken cancellationToken)
+    public async Task<List<CommentDto>> Handle(GetMediaCommentsQuery request, CancellationToken cancellationToken)
     {
-        return await _context.Comments
+        var items = await _context.Comments
             .AsNoTracking()
-            .Where(c => c.MediaId == request.MediaId)
-            .OrderBy(c => c.CreatedOn)
+            .Where(x => x.MediaId == request.MediaId)
+            .OrderBy(x => x.CreatedOn)
+            .ProjectTo<CommentDto>(_mapper.ConfigurationProvider)
             .ToListAsync(cancellationToken);
+
+        return await _identity.WithUserNamesAsync(items, cancellationToken);
     }
 }

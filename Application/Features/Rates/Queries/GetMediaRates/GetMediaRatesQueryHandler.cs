@@ -1,21 +1,28 @@
-using IMDB.Domain.Entities;
+using IMDB.Application.Common.Extensions;
 
 namespace IMDB.Application.Features.Rates.Queries.GetMediaRates;
-public class GetMediaRatesQueryHandler : IRequestHandler<GetMediaRatesQuery, List<Rate>>
+public class GetMediaRatesQueryHandler : IRequestHandler<GetMediaRatesQuery, List<RateDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+    private readonly IIdentityService _identity;
 
-    public GetMediaRatesQueryHandler(IApplicationDbContext context)
+    public GetMediaRatesQueryHandler(IApplicationDbContext context, IMapper mapper, IIdentityService identity)
     {
         _context = context;
+        _mapper = mapper;
+        _identity = identity;
     }
 
-    public async Task<List<Rate>> Handle(GetMediaRatesQuery request, CancellationToken cancellationToken)
+    public async Task<List<RateDto>> Handle(GetMediaRatesQuery request, CancellationToken cancellationToken)
     {
-        return await _context.Rates
+        var items = await _context.Rates
             .AsNoTracking()
-            .Where(r => r.MediaId == request.MediaId)
-            .OrderBy(r => r.CreatedOn)
+            .Where(x => x.MediaId == request.MediaId)
+            .OrderBy(x => x.CreatedOn)
+            .ProjectTo<RateDto>(_mapper.ConfigurationProvider)
             .ToListAsync(cancellationToken);
+
+        return await _identity.WithUserNamesAsync(items, cancellationToken);
     }
 }

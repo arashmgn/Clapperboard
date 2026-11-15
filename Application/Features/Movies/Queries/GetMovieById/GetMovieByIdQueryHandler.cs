@@ -1,20 +1,21 @@
-using IMDB.Domain.Entities;
-
 namespace IMDB.Application.Features.Movies.Queries.GetMovieById;
-public class GetMovieByIdQueryHandler : IRequestHandler<GetMovieByIdQuery, Movie?>
+public class GetMovieByIdQueryHandler : IRequestHandler<GetMovieByIdQuery, MovieDto?>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
 
-    public GetMovieByIdQueryHandler(IApplicationDbContext context)
+    public GetMovieByIdQueryHandler(IApplicationDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<Movie?> Handle(GetMovieByIdQuery request, CancellationToken cancellationToken)
+    public async Task<MovieDto?> Handle(GetMovieByIdQuery request, CancellationToken cancellationToken)
     {
         return await _context.Movies
             .AsNoTracking()
-            .Include(x => x.Genres)
-            .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+            .Where(x => x.Id == request.Id)
+            .ProjectTo<MovieDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

@@ -1,19 +1,21 @@
-using IMDB.Domain.Entities;
-
 namespace IMDB.Application.Features.People.Queries.GetPersonById;
-public class GetPersonByIdQueryHandler : IRequestHandler<GetPersonByIdQuery, Person?>
+public class GetPersonByIdQueryHandler : IRequestHandler<GetPersonByIdQuery, PersonDto?>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
 
-    public GetPersonByIdQueryHandler(IApplicationDbContext context)
+    public GetPersonByIdQueryHandler(IApplicationDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<Person?> Handle(GetPersonByIdQuery request, CancellationToken cancellationToken)
+    public async Task<PersonDto?> Handle(GetPersonByIdQuery request, CancellationToken cancellationToken)
     {
         return await _context.People
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+            .Where(x => x.Id == request.Id)
+            .ProjectTo<PersonDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

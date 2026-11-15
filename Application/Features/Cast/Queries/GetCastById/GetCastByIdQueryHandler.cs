@@ -1,22 +1,21 @@
-using CastEntity = IMDB.Domain.Entities.Cast;
-using IMDB.Application.Common.Abstractions;
-using Microsoft.EntityFrameworkCore;
-
 namespace IMDB.Application.Features.Cast.Queries.GetCastById;
-public class GetCastByIdQueryHandler : IRequestHandler<GetCastByIdQuery, CastEntity?>
+public class GetCastByIdQueryHandler : IRequestHandler<GetCastByIdQuery, CastDto?>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
 
-    public GetCastByIdQueryHandler(IApplicationDbContext context)
+    public GetCastByIdQueryHandler(IApplicationDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<CastEntity?> Handle(GetCastByIdQuery request, CancellationToken cancellationToken)
+    public async Task<CastDto?> Handle(GetCastByIdQuery request, CancellationToken cancellationToken)
     {
         return await _context.Casts
             .AsNoTracking()
-            .Include(c => c.Person)
-            .FirstOrDefaultAsync(c => c.Id == request.Id, cancellationToken);
+            .Where(c => c.Id == request.Id)
+            .ProjectTo<CastDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

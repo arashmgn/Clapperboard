@@ -1,19 +1,23 @@
-using CastEntity = IMDB.Domain.Entities.Cast;
-
 namespace IMDB.Application.Features.Cast.Queries.GetMediaCast;
-public class GetMediaCastQueryHandler : IRequestHandler<GetMediaCastQuery, List<CastEntity>>
+public class GetMediaCastQueryHandler : IRequestHandler<GetMediaCastQuery, List<CastDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
 
-    public GetMediaCastQueryHandler(IApplicationDbContext context)
+    public GetMediaCastQueryHandler(IApplicationDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<List<CastEntity>> Handle(GetMediaCastQuery request, CancellationToken cancellationToken)
+    public async Task<List<CastDto>> Handle(GetMediaCastQuery request, CancellationToken cancellationToken)
     {
-        var query = _context.Casts.AsQueryable();
-        query = query.OrderBy(c => c.PersonId);
-        return await query.ToListAsync(cancellationToken);
+        return await _context.Casts
+            .AsNoTracking()
+            .Where(c => c.MediaId == request.MediaId)
+            .OrderBy(c => c.Role)
+            .ThenBy(c => c.Person!.FullName)
+            .ProjectTo<CastDto>(_mapper.ConfigurationProvider)
+            .ToListAsync(cancellationToken);
     }
 }

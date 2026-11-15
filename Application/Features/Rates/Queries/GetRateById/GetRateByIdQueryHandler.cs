@@ -1,19 +1,27 @@
-using IMDB.Domain.Entities;
+using IMDB.Application.Common.Extensions;
 
 namespace IMDB.Application.Features.Rates.Queries.GetRateById;
-public class GetRateByIdQueryHandler : IRequestHandler<GetRateByIdQuery, Rate?>
+public class GetRateByIdQueryHandler : IRequestHandler<GetRateByIdQuery, RateDto?>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+    private readonly IIdentityService _identity;
 
-    public GetRateByIdQueryHandler(IApplicationDbContext context)
+    public GetRateByIdQueryHandler(IApplicationDbContext context, IMapper mapper, IIdentityService identity)
     {
         _context = context;
+        _mapper = mapper;
+        _identity = identity;
     }
 
-    public async Task<Rate?> Handle(GetRateByIdQuery request, CancellationToken cancellationToken)
+    public async Task<RateDto?> Handle(GetRateByIdQuery request, CancellationToken cancellationToken)
     {
-        return await _context.Rates
+        var item = await _context.Rates
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+            .Where(x => x.Id == request.Id)
+            .ProjectTo<RateDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return await _identity.WithUserNameAsync(item, cancellationToken);
     }
 }

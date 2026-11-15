@@ -1,22 +1,27 @@
-using CastEntity = IMDB.Domain.Entities.Cast;
-
 namespace IMDB.Application.Features.Cast.Queries.GetCastPaginated;
-public class GetCastPaginatedQueryHandler : IRequestHandler<GetCastPaginatedQuery, (List<CastEntity> Items, int TotalCount)>
+public class GetCastPaginatedQueryHandler : IRequestHandler<GetCastPaginatedQuery, (List<CastDto> Items, int TotalCount)>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
 
-    public GetCastPaginatedQueryHandler(IApplicationDbContext context)
+    public GetCastPaginatedQueryHandler(IApplicationDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<(List<CastEntity> Items, int TotalCount)> Handle(GetCastPaginatedQuery request, CancellationToken cancellationToken)
+    public async Task<(List<CastDto> Items, int TotalCount)> Handle(GetCastPaginatedQuery request, CancellationToken cancellationToken)
     {
-        var totalCount = _context.Casts.Count();
-        return (await _context.Casts
+        var totalCount = await _context.Casts.CountAsync(cancellationToken);
+
+        var items = await _context.Casts
             .AsNoTracking()
-            .Skip((request.page - 1) * request.pageSize)
-            .Take(request.pageSize)
-            .ToListAsync(cancellationToken), totalCount);
+            .OrderBy(c => c.PersonId)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ProjectTo<CastDto>(_mapper.ConfigurationProvider)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
     }
 }

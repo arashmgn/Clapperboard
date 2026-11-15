@@ -1,16 +1,20 @@
-using IMDB.Domain.Entities;
+using IMDB.Application.Common.Extensions;
 
 namespace IMDB.Application.Features.Comments.Queries.GetCommentsPaginated;
-public class GetCommentsPaginatedQueryHandler : IRequestHandler<GetCommentsPaginatedQuery, (List<Comment> Items, int TotalCount)>
+public class GetCommentsPaginatedQueryHandler : IRequestHandler<GetCommentsPaginatedQuery, (List<CommentDto> Items, int TotalCount)>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+    private readonly IIdentityService _identity;
 
-    public GetCommentsPaginatedQueryHandler(IApplicationDbContext context)
+    public GetCommentsPaginatedQueryHandler(IApplicationDbContext context, IMapper mapper, IIdentityService identity)
     {
         _context = context;
+        _mapper = mapper;
+        _identity = identity;
     }
 
-    public async Task<(List<Comment> Items, int TotalCount)> Handle(GetCommentsPaginatedQuery request, CancellationToken cancellationToken)
+    public async Task<(List<CommentDto> Items, int TotalCount)> Handle(GetCommentsPaginatedQuery request, CancellationToken cancellationToken)
     {
         var totalCount = await _context.Comments.CountAsync(cancellationToken);
 
@@ -19,8 +23,9 @@ public class GetCommentsPaginatedQueryHandler : IRequestHandler<GetCommentsPagin
             .OrderBy(x => x.CreatedOn)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
+            .ProjectTo<CommentDto>(_mapper.ConfigurationProvider)
             .ToListAsync(cancellationToken);
 
-        return (items, totalCount);
+        return (await _identity.WithUserNamesAsync(items, cancellationToken), totalCount);
     }
 }
