@@ -1,6 +1,6 @@
 ﻿using IMDB.Application.Common.Abstractions;
-using IMDB.Application.Common.Constants;
-using IMDB.Application.Common.Exceptions;
+using IMDB.Application.Common;
+using static IMDB.Application.Common.Exceptions.ApplicationsExceptions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
